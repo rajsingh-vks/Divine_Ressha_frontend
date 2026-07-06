@@ -19,23 +19,20 @@ export default function HomePage() {
       <main>
         <Hero />
 
-        <section className="page-shell">
+        <section className='page-shell-wrapper'>
           <Overview />
+          <ProductGrid products={products} />
         </section>
-
-        <ProductGrid products={products} />
 
         <section className="page-shell">
           <Features />
         </section>
 
-        <section className="page-shell">
+        <section className="page-shell-wrapper philosophy-wrapper">
           <Philosophy />
         </section>
 
-        <section className="page-shell">
-          <Newsletter />
-        </section>
+        <Newsletter />
       </main>
 
       <Footer />

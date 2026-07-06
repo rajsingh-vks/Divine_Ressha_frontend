@@ -8,7 +8,7 @@ export default function Footer() {
           <div key={group.heading} className="footer-group">
             <p className="footer-heading">{group.heading}</p>
             {group.links.map((link) => (
-              <a key={link.href} href={link.href}>
+              <a key={`${group.heading}-${link.label}`} href={link.href}>
                 {link.label}
               </a>
             ))}

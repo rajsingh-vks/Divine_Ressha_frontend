@@ -17,8 +17,8 @@ export default function Header() {
         <Image 
           src="/images/logo.png" 
           alt={brandName} 
-          width={40} 
-          height={40}
+          width={80} 
+          height={50}
           className="brand-logo"
           priority
         />
@@ -26,13 +26,13 @@ export default function Header() {
       </div>
       <div className="header-actions">
         <button className="icon-button" aria-label={headerText.searchLabel}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.35-4.35"></path>
           </svg>
         </button>
         <button className="icon-button bag-button" aria-label={headerText.bagLabel}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M6 2L6 6H3V22H21V6H18V2M6 2H18V6M9 11V17M15 11V17M12 11V17"></path>
           </svg>
           <span className="bag-count">0</span>

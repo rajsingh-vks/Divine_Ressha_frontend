@@ -8,7 +8,7 @@ export default function Overview() {
         <h2>{overviewContent.title}</h2>
         <p>{overviewContent.description}</p>
       </div>
-      <div className="price-tag">{overviewContent.priceTag}</div>
+      {/* <div className="price-tag">{overviewContent.priceTag}</div> */}
     </section>
   );
 }
