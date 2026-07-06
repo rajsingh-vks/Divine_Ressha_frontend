@@ -1,5 +1,6 @@
 import Header from './components/Header';
 import Hero from './components/Hero';
+import RitualShowcase from './components/RitualShowcase';
 import Overview from './components/Overview';
 import ProductGrid from './components/ProductGrid';
 import Features from './components/Features';
@@ -18,6 +19,7 @@ export default function HomePage() {
 
       <main>
         <Hero />
+        <RitualShowcase />
 
         <section className='page-shell-wrapper'>
           <Overview />
