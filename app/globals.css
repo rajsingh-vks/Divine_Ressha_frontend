@@ -13,7 +13,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-      /* background: #faf9f1; */
+  /* background: #faf9f1; */
 }
 
 body {
@@ -52,14 +52,14 @@ img {
 
 .brand {
   display: flex;
-  align-items: center;
+  /* align-items: center;
   gap: 0.75rem;
   font-size: 0.9rem;
   letter-spacing: 0.35em;
   text-transform: uppercase;
   flex: 1;
   justify-content: center;
-  color: #1a1a1a;
+  color: #1a1a1a; */
 }
 
 .site-nav {
@@ -85,6 +85,9 @@ img {
   display: flex;
   gap: 1.5rem;
   align-items: center;
+      width: 220px;
+    justify-content: end;
+   
 }
 
 .icon-button {
@@ -122,6 +125,61 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+} */
+
+.icon-button,
+.menu-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.menu-btn {
+  display: none;
+  font-size: 28px;
+}
+
+.mobile-nav {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background: rgb(247 245 236);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.mobile-nav a {
+  color: #222;
+  border-bottom: 1px solid #d8d8d8;
+  padding: 12px 18px;
+  text-decoration: none;
+  font-size: 12px;
+  font-family: "Playfair Display, serif";
+}
+
+.mobile-nav.active {
+  display: flex;
+}
+
+
+
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none;
+  }
+
+  .menu-btn {
+    display: block;
+  }
 }
 
 .hero {
@@ -344,7 +402,7 @@ img {
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   /* border-radius: 28px; */
   overflow: hidden;
-      padding: 15px;
+  padding: 15px;
   display: grid;
   gap: 1rem;
 }
@@ -613,16 +671,17 @@ img {
 
 @media (max-width: 720px) {
   .site-header {
-    flex-direction: column;
-    align-items: center;
-    padding: 1rem;
-    gap: 1rem;
+    flex-direction: row;
+    /* align-items: center; */
+    padding: 0.5rem 1rem;
+    /* gap: 1rem; */
   }
 
   .site-nav {
-    width: 100%;
-    justify-content: space-around;
+    /* width: 100%; */
+    /* justify-content: space-around; */
     gap: 1rem;
+    order: 3;
   }
 
   .brand {
@@ -648,13 +707,17 @@ img {
     font-size: 1.8rem;
   }
 
+  .page-shell-wrapper {
+    padding: 3rem 1.25rem;
+  }
+
   .overview,
   .footer-bottom {
     flex-direction: column;
   }
 
   .ritual-showcase {
-    padding: 4rem 1.25rem;
+    padding: 2rem 1.25rem;
   }
 
   .ritual-showcase-grid {
@@ -675,6 +738,7 @@ img {
     gap: 0;
     margin-top: 3rem;
     text-align: left;
+    display: flex;
   }
 
   .newsletter-form button {
@@ -682,6 +746,7 @@ img {
     min-width: 0;
     padding-top: 0.25rem;
     text-align: left;
+    margin-left: auto;
   }
 
   .site-footer {
@@ -690,11 +755,28 @@ img {
 
   .overview {
     display: grid;
+    padding: 0px;
+  }
+
+  .overview h2 {
+    font-size: 2.2rem;
+  }
+
+  .product-card {
+    border-right: inherit;
+    border-bottom: 1px solid #00000014;
+    padding: 0px;
   }
 
   .product-grid,
   .feature-grid,
   .footer-top {
     grid-template-columns: 1fr;
+    padding: 0;
+  }
+
+  .philosophy h2 {
+    padding: 3rem 0;
+    font-size: 2.2rem;
   }
 }
