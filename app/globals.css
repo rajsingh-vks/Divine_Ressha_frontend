@@ -406,6 +406,9 @@ img {
   display: grid;
   gap: 1rem;
 }
+.product-card:last-child {
+  border-right: none;
+}
 
 .product-image img {
   width: 100%;
@@ -766,6 +769,10 @@ img {
     border-right: inherit;
     border-bottom: 1px solid #00000014;
     padding: 0px;
+  }
+
+  .product-card:last-child {
+    border-bottom: none;
   }
 
   .product-grid,
