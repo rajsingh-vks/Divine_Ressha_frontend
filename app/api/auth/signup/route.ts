@@ -1,0 +1,36 @@
+import { NextResponse } from 'next/server';
+import { AUTH_ENDPOINTS, BACKEND_API_URL } from '@/lib/constants/auth';
+
+async function proxy(request: Request) {
+  const payload = await request.json();
+
+  const backendResponse = await fetch(`${BACKEND_API_URL}${AUTH_ENDPOINTS.signup}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await backendResponse.text();
+  let data: unknown = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { message: text };
+  }
+
+  return NextResponse.json(data, { status: backendResponse.status });
+}
+
+export async function POST(request: Request) {
+  try {
+    return await proxy(request);
+  } catch (error) {
+    return NextResponse.json(
+      { detail: error instanceof Error ? error.message : 'Unable to reach authentication service.' },
+      { status: 500 }
+    );
+  }
+}
