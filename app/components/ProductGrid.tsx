@@ -10,6 +10,7 @@ export default function ProductGrid({ products }: ProductGridProps) {
     <section className="product-grid" id="shop">
       {products.map((product) => (
         <article className="product-card" key={product.title}>
+          <ProductCardActions product={product} />
           <div className="product-image">
             <img src={product.image} alt={product.title} loading="lazy" />
           </div>
@@ -17,7 +18,7 @@ export default function ProductGrid({ products }: ProductGridProps) {
             <p className="product-title">{product.title}</p>
             <p className="product-tag">{product.tag}</p>
             <p className="product-notes">{product.notes}</p>
-            <ProductCardActions product={product} />
+            <p className="price-tag">${product.price}</p>
           </div>
         </article>
       ))}
