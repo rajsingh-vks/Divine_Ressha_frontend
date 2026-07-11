@@ -16,7 +16,10 @@ type ShopActionsContextValue = {
 type ShopItem = {
   id?: string;
   productId?: string;
+  product_id?: string;
   title?: string;
+  name?: string;
+  price?: number;
 };
 
 type BackendCollection = {
@@ -76,6 +79,27 @@ const writeGuestItems = (key: string, items: ShopItem[]) => {
   localStorage.setItem(key, JSON.stringify(items));
 };
 
+const clearGuestItems = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(GUEST_CART_KEY);
+  localStorage.removeItem(GUEST_WISHLIST_KEY);
+};
+
+const getItemProductId = (item: ShopItem) => String(item.productId ?? item.product_id ?? item.id ?? '');
+
+const normalizeGuestProductPayload = (item: ShopItem) => {
+  const productId = getItemProductId(item);
+
+  return {
+    id: productId,
+    productId,
+    product_id: productId,
+    title: item.title || item.name || '',
+    name: item.name || item.title || '',
+    price: item.price,
+  };
+};
+
 const normalizeItems = (payload: BackendCollection | null | undefined): ShopItem[] => {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
@@ -85,6 +109,42 @@ const normalizeItems = (payload: BackendCollection | null | undefined): ShopItem
 export function ShopActionsProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<ShopItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<ShopItem[]>([]);
+
+  const syncGuestToBackend = async (guestCart: ShopItem[], guestWishlist: ShopItem[]) => {
+    if (!isAuthenticated()) return;
+
+    const token = readToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    await Promise.all(
+      guestCart
+        .filter((item) => getItemProductId(item))
+        .map((item) =>
+          fetch('/api/cart', {
+            method: 'POST',
+            credentials: 'include',
+            headers,
+            body: JSON.stringify(normalizeGuestProductPayload(item)),
+          }).catch(() => null)
+        )
+    );
+
+    await Promise.all(
+      guestWishlist
+        .filter((item) => getItemProductId(item))
+        .map((item) =>
+          fetch('/api/wishlist', {
+            method: 'POST',
+            credentials: 'include',
+            headers,
+            body: JSON.stringify(normalizeGuestProductPayload(item)),
+          }).catch(() => null)
+        )
+    );
+  };
 
   const fetchCollection = async (path: '/api/cart' | '/api/wishlist') => {
     const token = readToken();
@@ -120,10 +180,25 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
         return;
       }
 
+      const guestCart = readGuestItems(GUEST_CART_KEY);
+      const guestWishlist = readGuestItems(GUEST_WISHLIST_KEY);
+
+      if (!mounted) return;
+      if (guestCart.length) setCartItems(guestCart);
+      if (guestWishlist.length) setWishlistItems(guestWishlist);
+
+      if (guestCart.length || guestWishlist.length) {
+        await syncGuestToBackend(guestCart, guestWishlist);
+      }
+
       const [cart, wishlist] = await Promise.all([fetchCollection('/api/cart'), fetchCollection('/api/wishlist')]);
       if (!mounted) return;
-      setCartItems(cart);
-      setWishlistItems(wishlist);
+      setCartItems(cart.length ? cart : guestCart);
+      setWishlistItems(wishlist.length ? wishlist : guestWishlist);
+
+      if (cart.length || wishlist.length) {
+        clearGuestItems();
+      }
     };
 
     hydrate();
@@ -141,7 +216,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     if (!isAuthenticated()) {
       setCartItems((current) => {
         const exists = current.some((item) => item.productId === product.id || item.id === product.id || item.title === product.title);
-        const next = exists ? current : [...current, { id: product.id, title: product.title }];
+        const next = exists ? current : [...current, { id: product.id, title: product.title, price: product.price }];
         writeGuestItems(GUEST_CART_KEY, next);
         return next;
       });
@@ -178,7 +253,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
         const exists = current.some((item) => item.productId === product.id || item.id === product.id || item.title === product.title);
         const next = exists
           ? current.filter((item) => !(item.productId === product.id || item.id === product.id || item.title === product.title))
-          : [...current, { id: product.id, title: product.title }];
+          : [...current, { id: product.id, title: product.title, price: product.price }];
 
         writeGuestItems(GUEST_WISHLIST_KEY, next);
         return next;
