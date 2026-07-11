@@ -5,21 +5,24 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { navigationLinks, brandName, headerText } from '@/lib/data/navigation';
 import Link from 'next/link';
-import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
+import { useShopActions } from './ShopActionsProvider';
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [profileName, setProfileName] = useState('Profile');
+  const { cartCount, wishlistCount } = useShopActions();
   const router = useRouter();
 
   useEffect(() => {
     const syncAuthState = () => {
       const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const session = localStorage.getItem(AUTH_SESSION_KEY) === '1';
       const user = localStorage.getItem(AUTH_USER_KEY);
 
-      setIsAuthenticated(Boolean(token));
+      setIsAuthenticated(Boolean(token) || session);
 
       if (user) {
         try {
@@ -45,6 +48,7 @@ export default function Header() {
 
   const handleLogout = () => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_SESSION_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
     setIsAuthenticated(false);
     setProfileName('Profile');
@@ -77,6 +81,20 @@ export default function Header() {
         </Link>
       </div>
       <div className="header-actions">
+        <button className="icon-button shop-count-button" type="button" aria-label={`Wishlist ${wishlistCount}`}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+          <span className="bag-count">{wishlistCount}</span>
+        </button>
+        <button className="icon-button shop-count-button" type="button" aria-label={`Cart ${cartCount}`}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 2l1.5 4h13l-1.5 8h-12L4 2z" />
+            <circle cx="10" cy="20" r="1" />
+            <circle cx="18" cy="20" r="1" />
+          </svg>
+          <span className="bag-count">{cartCount}</span>
+        </button>
         {isAuthenticated ? (
           <div className="profile-menu">
             <button
@@ -132,18 +150,6 @@ export default function Header() {
             </svg>
           </Link>
         )}
-        {/* <button className="icon-button" aria-label={headerText.searchLabel}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
-        </button> */}
-        <button className="icon-button bag-button" aria-label={headerText.bagLabel}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M6 2L6 6H3V22H21V6H18V2M6 2H18V6M9 11V17M15 11V17M12 11V17"></path>
-          </svg>
-          <span className="bag-count">0</span>
-        </button>
 
         {/* Hamburger */}
         <button

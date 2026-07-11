@@ -21,7 +21,13 @@ async function proxy(request: Request) {
     data = { message: text };
   }
 
-  return NextResponse.json(data, { status: backendResponse.status });
+  const response = NextResponse.json(data, { status: backendResponse.status });
+  const setCookie = backendResponse.headers.get('set-cookie');
+  if (setCookie) {
+    response.headers.set('set-cookie', setCookie);
+  }
+
+  return response;
 }
 
 export async function POST(request: Request) {

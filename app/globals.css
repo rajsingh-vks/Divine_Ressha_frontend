@@ -90,6 +90,10 @@ img {
    
 }
 
+.shop-count-button {
+  position: relative;
+}
+
 .login-button {
   display: inline-flex;
   align-items: center;
@@ -367,6 +371,41 @@ img {
 .product-button:hover,
 .newsletter-form button:hover {
   transform: translateY(-1px);
+}
+
+.product-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.product-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.95rem 1.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.55);
+  color: #1a1a1a;
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.product-action-button.active,
+.product-button.active {
+  background: #1a1a1a;
+  color: #faf9f1;
+}
+
+.product-action-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8rem;
+  color: #b42318;
 }
 
 .hero-meta {

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
 
 type AuthMode = 'login' | 'signup';
 
@@ -13,6 +13,9 @@ type AuthFormProps = {
 
 type AuthResponse = {
   access_token?: string;
+  accessToken?: string;
+  auth_token?: string;
+  token_type?: string;
   token?: string;
   message?: string;
   detail?: string;
@@ -38,7 +41,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const isSignup = mode === 'signup';
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem(AUTH_TOKEN_KEY)) {
+    if (
+      typeof window !== 'undefined' &&
+      (localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(AUTH_SESSION_KEY) === '1')
+    ) {
       router.replace('/profile');
     }
   }, [mode, router]);
@@ -71,6 +77,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     try {
       const response = await fetch(`/api/auth/${mode}`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -87,13 +94,19 @@ export default function AuthForm({ mode }: AuthFormProps) {
         throw new Error(data.detail || data.message || 'Authentication failed.');
       }
 
-      const token = data.access_token || data.token;
+      const token = data.access_token || data.accessToken || data.auth_token || data.token;
       const userPayload = {
         name: data.name || form.name || (typeof data.user === 'object' && data.user ? (data.user as { name?: string }).name : ''),
         email: data.email || form.email || (typeof data.user === 'object' && data.user ? (data.user as { email?: string }).email : ''),
       };
 
-      localStorage.setItem(AUTH_TOKEN_KEY, token || 'authenticated');
+      if (token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+
+      localStorage.setItem(AUTH_SESSION_KEY, '1');
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userPayload));
       window.dispatchEvent(new Event('auth-change'));
 
@@ -101,6 +114,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       setForm(initialState);
       router.replace('/profile');
       router.refresh();
+      window.location.assign('/profile');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
