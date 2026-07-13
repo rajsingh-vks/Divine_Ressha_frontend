@@ -17,6 +17,12 @@ type AuthResponse = {
   auth_token?: string;
   token_type?: string;
   token?: string;
+  tokens?: {
+    access_token?: string;
+    refresh_token?: string;
+    token_type?: string;
+    expires_in?: number;
+  } | null;
   message?: string;
   detail?: string;
   user?: unknown;
@@ -94,9 +100,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
         throw new Error(data.detail || data.message || 'Authentication failed.');
       }
 
-      const token = data.access_token || data.accessToken || data.auth_token || data.token;
+      const token = data.access_token || data.accessToken || data.auth_token || data.token || data.tokens?.access_token;
       const userPayload = {
-        name: data.name || form.name || (typeof data.user === 'object' && data.user ? (data.user as { name?: string }).name : ''),
+        name:
+          data.name ||
+          form.name ||
+          (typeof data.user === 'object' && data.user
+            ? ((data.user as { name?: string; full_name?: string }).name || (data.user as { full_name?: string }).full_name)
+            : ''),
         email: data.email || form.email || (typeof data.user === 'object' && data.user ? (data.user as { email?: string }).email : ''),
       };
 

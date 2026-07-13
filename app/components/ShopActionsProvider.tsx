@@ -11,6 +11,7 @@ type ShopActionsContextValue = {
   wishlistItems: ShopItem[];
   addToCart: (product: Product) => Promise<void>;
   removeFromCart: (cartItemId: string, productId?: string) => Promise<void>;
+  updateCartQuantity: (cartItemId: string, quantity: number, productId?: string) => Promise<void>;
   toggleWishlist: (product: Product) => Promise<void>;
   isInCart: (productId: string) => boolean;
   isWishlisted: (productId: string) => boolean;
@@ -27,6 +28,7 @@ type ShopItem = {
     title?: string;
     image_url?: string;
     price?: number;
+    category?: string;
   };
   title?: string;
   name?: string;
@@ -320,6 +322,68 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     );
   };
 
+  const updateCartQuantity = async (cartItemId: string, quantity: number, productId?: string) => {
+    const safeQuantity = Math.max(1, quantity);
+
+    if (!isAuthenticated()) {
+      setCartItems((current) => {
+        const next = current.map((item) => {
+          const isTarget = productId
+            ? getComparableProductId(item) === productId
+            : String(item.id || '') === cartItemId;
+
+          if (!isTarget) return item;
+          return {
+            ...item,
+            quantity: safeQuantity,
+            line_total: (item.unit_price ?? item.price ?? item.product?.price ?? 0) * safeQuantity,
+          };
+        });
+
+        writeGuestItems(GUEST_CART_KEY, next);
+        return next;
+      });
+      return;
+    }
+
+    const token = readToken();
+    const response = await fetch(`/api/cart/${encodeURIComponent(cartItemId)}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ quantity: safeQuantity }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Please login to update cart.');
+      }
+      const message = await extractErrorMessage(response, 'Unable to update quantity.');
+      throw new Error(message);
+    }
+
+    const updatedCart = await fetchCollection('/api/cart');
+    if (updatedCart.length) {
+      setCartItems(updatedCart);
+      return;
+    }
+
+    setCartItems((current) =>
+      current.map((item) =>
+        String(item.id || '') === cartItemId
+          ? {
+              ...item,
+              quantity: safeQuantity,
+              line_total: (item.unit_price ?? item.price ?? item.product?.price ?? 0) * safeQuantity,
+            }
+          : item
+      )
+    );
+  };
+
   const toggleWishlist = async (product: Product) => {
     if (!isAuthenticated()) {
       setWishlistItems((current) => {
@@ -374,6 +438,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
       wishlistItems,
       addToCart,
       removeFromCart,
+      updateCartQuantity,
       toggleWishlist,
       isInCart: (productId) => cartItems.some((item) => getComparableProductId(item) === productId),
       isWishlisted: (productId) => wishlistItems.some((item) => getComparableProductId(item) === productId),

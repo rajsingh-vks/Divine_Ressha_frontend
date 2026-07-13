@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useShopActions } from './ShopActionsProvider';
 import { useState } from 'react';
 
@@ -17,7 +17,8 @@ type ShopItem = {
     title?: string;
     price?: number;
     image_url?: string;
-    category?: string;
+    category?: string; // Added category to product definition
+    stock?: number;
   };
   title?: string;
   name?: string;
@@ -47,28 +48,72 @@ const formatCurrency = (amount: number) =>
   }).format(amount);
 
 export default function CartItemsPanel() {
-  const { cartItems, cartCount, removeFromCart } = useShopActions();
+  const { cartItems, cartCount, removeFromCart, updateCartQuantity } = useShopActions();
   const [pendingRemoveId, setPendingRemoveId] = useState('');
+  const [pendingQtyId, setPendingQtyId] = useState('');
   const [error, setError] = useState('');
+  const [stockByProductId, setStockByProductId] = useState<Record<string, number>>({});
 
   const rows = useMemo(
     () =>
-      cartItems.map((item, index) => ({
-        key: String(getProductId(item) || `${getItemName(item)}-${index}`),
-        cartItemId: getCartItemId(item),
-        productId: getProductId(item),
-        name: getItemName(item),
-        image: getItemImage(item),
-        category: item.product?.category || 'Selected product',
-        quantity: item.quantity ?? 1,
-        unitPrice: getUnitPrice(item),
-        lineTotal: getLineTotal(item),
-      })),
-    [cartItems]
+      cartItems.map((rawItem, index) => {
+        const item = rawItem as ShopItem;
+        return {
+          key: String(getProductId(item) || `${getItemName(item)}-${index}`),
+          cartItemId: getCartItemId(item),
+          productId: getProductId(item),
+          name: getItemName(item),
+          image: getItemImage(item),
+          category: item.product?.category || 'Selected product',
+          quantity: item.quantity ?? 1,
+          unitPrice: getUnitPrice(item),
+          lineTotal: getLineTotal(item),
+          stock: Number(item.product?.stock ?? stockByProductId[getProductId(item)] ?? 9999),
+        };
+      }),
+    [cartItems, stockByProductId]
   );
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadStocks = async () => {
+      const productIds = Array.from(new Set(rows.map((row) => row.productId).filter(Boolean)));
+      if (!productIds.length) {
+        setStockByProductId({});
+        return;
+      }
+
+      const entries = await Promise.all(
+        productIds.map(async (id) => {
+          try {
+            const response = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+              method: 'GET',
+              credentials: 'include',
+              cache: 'no-store',
+            });
+            if (!response.ok) return [id, 9999] as const;
+            const data = (await response.json()) as { stock?: number };
+            return [id, Number(data.stock ?? 9999)] as const;
+          } catch {
+            return [id, 9999] as const;
+          }
+        })
+      );
+
+      if (cancelled) return;
+      setStockByProductId(Object.fromEntries(entries));
+    };
+
+    loadStocks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rows.map((row) => row.productId).join('|')]);
+
   const subtotal = useMemo(() => rows.reduce((sum, row) => sum + row.lineTotal, 0), [rows]);
-  const fees = rows.length ? 9 : 0;
+  const fees = rows.length ? 0 : 0;
   const totalAmount = subtotal + fees;
 
   const handleRemove = async (cartItemId: string, productId: string) => {
@@ -83,13 +128,30 @@ export default function CartItemsPanel() {
     }
   };
 
+  const handleQtyChange = async (cartItemId: string, productId: string, nextQty: number, maxStock: number) => {
+    if (nextQty < 1) return;
+    if (nextQty > maxStock) {
+      setError(`Only ${maxStock} item(s) available in stock.`);
+      return;
+    }
+
+    setError('');
+    setPendingQtyId(cartItemId);
+    try {
+      await updateCartQuantity(cartItemId, nextQty, productId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update quantity.');
+    } finally {
+      setPendingQtyId('');
+    }
+  };
+
   return (
     <section className="cart-page-shell">
       <div className="cart-page-layout">
         <div className="cart-items-column">
           <div className="cart-tab-head">
-            <strong>Divine Ressha ({cartCount})</strong>
-            <span>Secure cart</span>
+            <strong>Divine Products ({cartCount})</strong>
           </div>
 
           {error ? <p className="cart-page-error">{error}</p> : null}
@@ -104,8 +166,6 @@ export default function CartItemsPanel() {
                     <div className="cart-item-info">
                       <h3>{row.name}</h3>
                       <p>{row.category}</p>
-                      <div className="cart-item-rating">★ ★ ★ ★ ☆ <span>4.2</span></div>
-
                       <div className="cart-item-price">
                         <strong>{formatCurrency(row.lineTotal)}</strong>
                         {row.quantity > 1 ? <span>{row.quantity} × {formatCurrency(row.unitPrice)}</span> : null}
@@ -114,11 +174,32 @@ export default function CartItemsPanel() {
                   </div>
 
                   <div className="cart-item-footer">
-                    <span>Qty: {row.quantity}</span>
+                    <div className="cart-qty-control">
+                      <button
+                        className="cart-qty-btn"
+                        type="button"
+                        onClick={() => handleQtyChange(row.cartItemId, row.productId, row.quantity - 1, row.stock)}
+                        disabled={pendingQtyId === row.cartItemId || row.quantity <= 1}
+                        aria-label="Decrease quantity"
+                      >
+                        −
+                      </button>
+                      <span>Qty: {row.quantity}</span>
+                      <button
+                        className="cart-qty-btn"
+                        type="button"
+                        onClick={() => handleQtyChange(row.cartItemId, row.productId, row.quantity + 1, row.stock)}
+                        disabled={pendingQtyId === row.cartItemId || row.quantity >= row.stock}
+                        aria-label="Increase quantity"
+                      >
+                        +
+                      </button>
+                    </div>
                     <button
+                      className="cart-remove-btn"
                       type="button"
                       onClick={() => handleRemove(row.cartItemId, row.productId)}
-                      disabled={pendingRemoveId === row.cartItemId}
+                      disabled={pendingRemoveId === row.cartItemId || pendingQtyId === row.cartItemId}
                     >
                       {pendingRemoveId === row.cartItemId ? 'Removing…' : 'Remove'}
                     </button>
@@ -140,7 +221,7 @@ export default function CartItemsPanel() {
               <strong>{formatCurrency(subtotal)}</strong>
             </div>
             <div className="cart-summary-row">
-              <span>Fees</span>
+              <span>Delivery Fees</span>
               <strong>{formatCurrency(fees)}</strong>
             </div>
             <div className="cart-summary-row total">
@@ -148,9 +229,6 @@ export default function CartItemsPanel() {
               <strong>{formatCurrency(totalAmount)}</strong>
             </div>
 
-            <div className="cart-summary-save">
-              You will save {formatCurrency(Math.max(0, subtotal * 0.1))} on this order
-            </div>
           </div>
 
           <div className="cart-place-order">
