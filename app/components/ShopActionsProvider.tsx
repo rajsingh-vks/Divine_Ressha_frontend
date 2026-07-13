@@ -17,6 +17,12 @@ type ShopItem = {
   id?: string;
   productId?: string;
   product_id?: string;
+  quantity?: number;
+  product?: {
+    id?: string;
+    name?: string;
+    title?: string;
+  };
   title?: string;
   name?: string;
   price?: number;
@@ -87,6 +93,9 @@ const clearGuestItems = () => {
 
 const getItemProductId = (item: ShopItem) => String(item.productId ?? item.product_id ?? item.id ?? '');
 
+const getComparableProductId = (item: ShopItem) =>
+  String(item.productId ?? item.product_id ?? item.product?.id ?? item.id ?? '');
+
 const normalizeGuestProductPayload = (item: ShopItem) => {
   const productId = getItemProductId(item);
 
@@ -99,6 +108,23 @@ const normalizeGuestProductPayload = (item: ShopItem) => {
     price: item.price,
   };
 };
+
+const normalizeProductPayload = (product: Product) => {
+  const productId = String(product.id || '');
+  return {
+    id: productId,
+    productId,
+    product_id: productId,
+    title: product.title,
+    name: product.title,
+    price: product.price,
+  };
+};
+
+const createCartPayload = (productId: string) => ({
+  product_id: productId,
+  quantity: 1,
+});
 
 const normalizeItems = (payload: BackendCollection | null | undefined): ShopItem[] => {
   if (!payload) return [];
@@ -122,14 +148,17 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     await Promise.all(
       guestCart
         .filter((item) => getItemProductId(item))
-        .map((item) =>
+        .map((item) => {
+          const productId = getItemProductId(item);
+          return (
           fetch('/api/cart', {
             method: 'POST',
             credentials: 'include',
             headers,
-            body: JSON.stringify(normalizeGuestProductPayload(item)),
+            body: JSON.stringify(createCartPayload(productId)),
           }).catch(() => null)
-        )
+          );
+        })
     );
 
     await Promise.all(
@@ -140,7 +169,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
             method: 'POST',
             credentials: 'include',
             headers,
-            body: JSON.stringify(normalizeGuestProductPayload(item)),
+            body: JSON.stringify({ product_id: getItemProductId(item) }),
           }).catch(() => null)
         )
     );
@@ -215,7 +244,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
   const addToCart = async (product: Product) => {
     if (!isAuthenticated()) {
       setCartItems((current) => {
-        const exists = current.some((item) => item.productId === product.id || item.id === product.id || item.title === product.title);
+        const exists = current.some((item) => getComparableProductId(item) === product.id);
         const next = exists ? current : [...current, { id: product.id, title: product.title, price: product.price }];
         writeGuestItems(GUEST_CART_KEY, next);
         return next;
@@ -224,6 +253,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     }
 
     const token = readToken();
+    const productPayload = createCartPayload(String(product.id));
     const response = await fetch('/api/cart', {
       method: 'POST',
       credentials: 'include',
@@ -231,7 +261,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(product),
+      body: JSON.stringify(productPayload),
     });
 
     if (!response.ok) {
@@ -244,15 +274,15 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
 
     const payload = (await response.json()) as BackendCollection;
     const normalized = normalizeItems(payload);
-    setCartItems((current) => (normalized.length ? normalized : [...current, { id: product.id, title: product.title }]));
+    setCartItems((current) => (normalized.length ? normalized : [...current, { productId: product.id, title: product.title }]));
   };
 
   const toggleWishlist = async (product: Product) => {
     if (!isAuthenticated()) {
       setWishlistItems((current) => {
-        const exists = current.some((item) => item.productId === product.id || item.id === product.id || item.title === product.title);
+        const exists = current.some((item) => getComparableProductId(item) === product.id);
         const next = exists
-          ? current.filter((item) => !(item.productId === product.id || item.id === product.id || item.title === product.title))
+          ? current.filter((item) => getComparableProductId(item) !== product.id)
           : [...current, { id: product.id, title: product.title, price: product.price }];
 
         writeGuestItems(GUEST_WISHLIST_KEY, next);
@@ -262,7 +292,8 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     }
 
     const token = readToken();
-    const exists = wishlistItems.some((item) => item.productId === product.id || item.id === product.id || item.title === product.title);
+    const productPayload = { product_id: String(product.id) };
+    const exists = wishlistItems.some((item) => getComparableProductId(item) === product.id);
 
     const response = await fetch('/api/wishlist', {
       method: exists ? 'DELETE' : 'POST',
@@ -271,7 +302,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(product),
+      body: JSON.stringify(productPayload),
     });
 
     if (!response.ok) {
@@ -283,13 +314,13 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     }
 
     if (exists) {
-      setWishlistItems((current) => current.filter((item) => !(item.productId === product.id || item.id === product.id || item.title === product.title)));
+      setWishlistItems((current) => current.filter((item) => getComparableProductId(item) !== product.id));
       return;
     }
 
     const payload = (await response.json()) as BackendCollection;
     const normalized = normalizeItems(payload);
-    setWishlistItems((current) => (normalized.length ? normalized : [...current, { id: product.id, title: product.title }]));
+    setWishlistItems((current) => (normalized.length ? normalized : [...current, { productId: product.id, title: product.title }]));
   };
 
   const value = useMemo<ShopActionsContextValue>(
@@ -298,8 +329,8 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
       wishlistCount: wishlistItems.length,
       addToCart,
       toggleWishlist,
-      isInCart: (productId) => cartItems.some((item) => item.productId === productId || item.id === productId),
-      isWishlisted: (productId) => wishlistItems.some((item) => item.productId === productId || item.id === productId),
+      isInCart: (productId) => cartItems.some((item) => getComparableProductId(item) === productId),
+      isWishlisted: (productId) => wishlistItems.some((item) => getComparableProductId(item) === productId),
     }),
     [cartItems, wishlistItems]
   );

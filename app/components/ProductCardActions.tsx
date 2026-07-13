@@ -4,6 +4,12 @@ import type { Product } from '@/lib/data/products';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useShopActions } from './ShopActionsProvider';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY } from '@/lib/constants/auth';
+
+const isAuthenticated = () => {
+  if (typeof window === 'undefined') return false;
+  return Boolean(localStorage.getItem(AUTH_TOKEN_KEY)) || localStorage.getItem(AUTH_SESSION_KEY) === '1';
+};
 
 export default function ProductCardActions({ product }: { product: Product }) {
   const { addToCart, toggleWishlist, isInCart, isWishlisted } = useShopActions();
@@ -22,7 +28,7 @@ export default function ProductCardActions({ product }: { product: Product }) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to add to cart.';
       setError(message);
-      if (message.toLowerCase().includes('login')) {
+      if (message.toLowerCase().includes('login') && !isAuthenticated()) {
         router.push('/login');
       }
     } finally {
@@ -38,7 +44,7 @@ export default function ProductCardActions({ product }: { product: Product }) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to update wishlist.';
       setError(message);
-      if (message.toLowerCase().includes('login')) {
+      if (message.toLowerCase().includes('login') && !isAuthenticated()) {
         router.push('/login');
       }
     } finally {
