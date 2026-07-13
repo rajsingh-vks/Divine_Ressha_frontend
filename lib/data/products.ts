@@ -1,3 +1,5 @@
+import { BACKEND_API_URL } from '@/lib/constants/auth';
+
 export interface Product {
   id: string;
   title: string;
@@ -46,3 +48,74 @@ export const products: Product[] = [
     description: 'Soothing lavender with calming herbal notes',
   },
 ];
+
+type BackendProduct = {
+  id: string;
+  name: string;
+  category?: string | null;
+  subcategory?: string | null;
+  brand?: string | null;
+  fragrance?: string | null;
+  pack_size?: string | null;
+  form?: string | null;
+  usage?: string | null;
+  price?: number | null;
+  stock?: number | null;
+  sku?: string | null;
+  status?: string | null;
+  image_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type ProductCollectionPayload =
+  | BackendProduct[]
+  | {
+      items?: BackendProduct[];
+      data?: BackendProduct[];
+      products?: BackendProduct[];
+    };
+
+const normalizeBackendProducts = (payload: ProductCollectionPayload): BackendProduct[] => {
+  if (Array.isArray(payload)) return payload;
+  return payload.items || payload.data || payload.products || [];
+};
+
+const mapBackendProductToUi = (product: BackendProduct, index: number): Product => {
+  const categoryPart = product.category || 'Signature';
+  const subcategoryPart = product.subcategory || product.form || 'Collection';
+  const tag = `${categoryPart} · ${subcategoryPart}`;
+
+  const notesParts = [product.fragrance, product.pack_size, product.usage].filter(Boolean) as string[];
+  const notes = notesParts.length ? notesParts.join(' · ') : 'Botanical blend';
+
+  return {
+    id: String(product.id || index + 1),
+    title: product.name || `Product ${index + 1}`,
+    tag,
+    notes,
+    image: product.image_url || products[index % products.length]?.image || products[0].image,
+    price: Number(product.price ?? 0),
+    description: product.brand || undefined,
+  };
+};
+
+export async function getProducts(): Promise<Product[]> {
+  try {
+    const response = await fetch(`${BACKEND_API_URL}/products`, {
+      method: 'GET',
+      cache: 'no-store',
+    });
+
+    if (!response.ok) return products;
+
+    const payload = (await response.json()) as ProductCollectionPayload;
+    const collection = normalizeBackendProducts(payload);
+
+    if (!collection.length) return products;
+
+    return collection.map(mapBackendProductToUi);
+  } catch {
+    return products;
+  }
+}
