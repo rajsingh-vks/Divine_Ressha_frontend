@@ -375,7 +375,14 @@ export default function CheckoutPanel() {
               <p className="checkout-overline">Checkout</p>
               <h1>Select address and place order</h1>
             </div>
-            <Link href="/cart" className="checkout-link-button">Back to cart</Link>
+            <Link href="/cart" className="checkout-link-button" aria-label="Back to cart">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 3h2l.4 2M7 13h10l4-8H5.4" />
+                <circle cx="9" cy="19" r="1" />
+                <circle cx="17" cy="19" r="1" />
+              </svg>
+              <span>Back to cart</span>
+            </Link>
           </div>
 
           {error ? <p className="checkout-message error">{error}</p> : null}

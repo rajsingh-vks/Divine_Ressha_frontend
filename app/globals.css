@@ -301,10 +301,10 @@ img {
 
 .checkout-heading h1,
 .orders-page-head h1 {
-  margin: 0;
+  /* margin: 0; */
   font-family: 'Playfair Display', serif;
   font-style: italic;
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(2rem, 4vw, 2rem);
 }
 
 .checkout-link-button,
@@ -398,7 +398,7 @@ img {
 .checkout-selected-address p,
 .order-shipping-box p,
 .order-note {
-  margin: 0;
+  /* margin: 0; */
   color: #665d52;
 }
 
@@ -624,6 +624,7 @@ img {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
+      grid-template-columns: 1fr auto;
 }
 
 .checkout-summary-lines .total {
