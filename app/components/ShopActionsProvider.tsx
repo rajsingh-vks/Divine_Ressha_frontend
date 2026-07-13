@@ -7,7 +7,10 @@ import type { Product } from '@/lib/data/products';
 type ShopActionsContextValue = {
   cartCount: number;
   wishlistCount: number;
+  cartItems: ShopItem[];
+  wishlistItems: ShopItem[];
   addToCart: (product: Product) => Promise<void>;
+  removeFromCart: (cartItemId: string, productId?: string) => Promise<void>;
   toggleWishlist: (product: Product) => Promise<void>;
   isInCart: (productId: string) => boolean;
   isWishlisted: (productId: string) => boolean;
@@ -22,10 +25,14 @@ type ShopItem = {
     id?: string;
     name?: string;
     title?: string;
+    image_url?: string;
+    price?: number;
   };
   title?: string;
   name?: string;
   price?: number;
+  unit_price?: number;
+  line_total?: number;
 };
 
 type BackendCollection = {
@@ -277,6 +284,42 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     setCartItems((current) => (normalized.length ? normalized : [...current, { productId: product.id, title: product.title }]));
   };
 
+  const removeFromCart = async (cartItemId: string, productId?: string) => {
+    if (!isAuthenticated()) {
+      setCartItems((current) => {
+        const next = current.filter((item) => getComparableProductId(item) !== (productId || cartItemId));
+        writeGuestItems(GUEST_CART_KEY, next);
+        return next;
+      });
+      return;
+    }
+
+    const token = readToken();
+    const response = await fetch(`/api/cart/${encodeURIComponent(cartItemId)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : undefined,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Please login to update cart.');
+      }
+      const message = await extractErrorMessage(response, 'Unable to remove cart item.');
+      throw new Error(message);
+    }
+
+    setCartItems((current) =>
+      current.filter(
+        (item) => !(String(item.id || '') === cartItemId || (productId ? getComparableProductId(item) === productId : false))
+      )
+    );
+  };
+
   const toggleWishlist = async (product: Product) => {
     if (!isAuthenticated()) {
       setWishlistItems((current) => {
@@ -327,7 +370,10 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     () => ({
       cartCount: cartItems.length,
       wishlistCount: wishlistItems.length,
+      cartItems,
+      wishlistItems,
       addToCart,
+      removeFromCart,
       toggleWishlist,
       isInCart: (productId) => cartItems.some((item) => getComparableProductId(item) === productId),
       isWishlisted: (productId) => wishlistItems.some((item) => getComparableProductId(item) === productId),
