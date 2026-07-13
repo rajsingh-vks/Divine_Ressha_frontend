@@ -9,6 +9,7 @@ type ShopActionsContextValue = {
   wishlistCount: number;
   cartItems: ShopItem[];
   wishlistItems: ShopItem[];
+  refreshCart: () => Promise<void>;
   addToCart: (product: Product) => Promise<void>;
   removeFromCart: (cartItemId: string, productId?: string) => Promise<void>;
   updateCartQuantity: (cartItemId: string, quantity: number, productId?: string) => Promise<void>;
@@ -384,6 +385,16 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     );
   };
 
+  const refreshCart = async () => {
+    if (!isAuthenticated()) {
+      setCartItems(readGuestItems(GUEST_CART_KEY));
+      return;
+    }
+
+    const updatedCart = await fetchCollection('/api/cart');
+    setCartItems(updatedCart);
+  };
+
   const toggleWishlist = async (product: Product) => {
     if (!isAuthenticated()) {
       setWishlistItems((current) => {
@@ -436,6 +447,7 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
       wishlistCount: wishlistItems.length,
       cartItems,
       wishlistItems,
+      refreshCart,
       addToCart,
       removeFromCart,
       updateCartQuantity,

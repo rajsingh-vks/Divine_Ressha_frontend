@@ -654,6 +654,74 @@
   padding-top: 0.5rem;
 }
 
+.admin-orders-kpi {
+  border: 1px solid #dbd5c9;
+  background: #faf7ef;
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+  min-width: 140px;
+}
+
+.admin-orders-kpi strong,
+.admin-order-cell strong,
+.admin-order-items-preview strong,
+.admin-order-address strong {
+  display: block;
+}
+
+.admin-orders-kpi strong {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.65rem;
+  font-style: italic;
+  color: #171511;
+}
+
+.admin-orders-kpi span,
+.admin-order-cell small,
+.admin-order-items-preview small,
+.admin-order-address small {
+  color: #857f74;
+  font-size: 0.74rem;
+}
+
+.admin-order-cell,
+.admin-order-items-preview,
+.admin-order-address,
+.admin-order-status-wrap {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.admin-order-status-wrap select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #dbd5c9;
+  background: #faf7ef;
+  color: #1a1714;
+  font: inherit;
+}
+
+.admin-order-status-badge.pending,
+.admin-order-status-badge.confirmed,
+.admin-order-status-badge.processing {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.admin-order-status-badge.shipped {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.admin-order-status-badge.delivered {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.admin-order-status-badge.cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 @media (max-width: 560px) {
   .admin-form-grid {
     grid-template-columns: 1fr;

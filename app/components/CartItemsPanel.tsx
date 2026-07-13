@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useShopActions } from './ShopActionsProvider';
 import { useState } from 'react';
 
@@ -48,6 +49,7 @@ const formatCurrency = (amount: number) =>
   }).format(amount);
 
 export default function CartItemsPanel() {
+  const router = useRouter();
   const { cartItems, cartCount, removeFromCart, updateCartQuantity } = useShopActions();
   const [pendingRemoveId, setPendingRemoveId] = useState('');
   const [pendingQtyId, setPendingQtyId] = useState('');
@@ -236,7 +238,7 @@ export default function CartItemsPanel() {
               <p>{formatCurrency(totalAmount)}</p>
               <small>Secure checkout</small>
             </div>
-            <button type="button" disabled={!rows.length}>Place order</button>
+            <button type="button" disabled={!rows.length} onClick={() => router.push('/checkout')}>Place order</button>
           </div>
         </aside>
       </div>
