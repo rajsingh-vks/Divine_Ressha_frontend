@@ -1,4 +1,4 @@
-export const BACKEND_API_URL = process.env.BACKEND_API_URL ?? 'http://localhost:8001';
+export const BACKEND_API_URL = process.env.BACKEND_API_URL ?? 'http://13.126.80.31';
 
 export const AUTH_ENDPOINTS = {
   login: '/auth/login',
