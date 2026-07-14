@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY } from '@/lib/constants/auth';
 import { useShopActions } from './ShopActionsProvider';
+import { proxyImageUrl } from '@/lib/utils/imageProxy';
 
 type ShopItem = {
   id?: string;
@@ -96,7 +97,7 @@ const getApiErrorMessage = async (response: Response, fallback: string) => {
 
 const getProductId = (item: ShopItem) => String(item.product?.id ?? item.productId ?? item.product_id ?? item.id ?? '');
 const getItemName = (item: ShopItem) => item.product?.name || item.product?.title || item.title || item.name || 'Product item';
-const getItemImage = (item: ShopItem) => item.product?.image_url || '/images/banner.jpg';
+const getItemImage = (item: ShopItem) => proxyImageUrl(item.product?.image_url, '/images/banner.jpg');
 const getUnitPrice = (item: ShopItem) => Number(item.unit_price ?? item.product?.price ?? item.price ?? 0);
 const getLineTotal = (item: ShopItem) => (typeof item.line_total === 'number' ? item.line_total : getUnitPrice(item) * (item.quantity ?? 1));
 const formatCurrency = (amount: number) =>
