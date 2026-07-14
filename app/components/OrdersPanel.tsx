@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY } from '@/lib/constants/auth';
 
@@ -80,19 +80,23 @@ const statusClassName = (status: string) => `order-status-pill ${status.toLowerC
 
 export default function OrdersPanel() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [actionOrderId, setActionOrderId] = useState('');
+  const [placedNotice, setPlacedNotice] = useState('');
 
-  const placedNotice = useMemo(() => {
-    const orderNumber = searchParams.get('order');
-    const status = searchParams.get('status');
-    if (!orderNumber) return '';
-    return `Order ${orderNumber} placed successfully${status ? ` · ${status}` : ''}.`;
-  }, [searchParams]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const orderNumber = params.get('order');
+    const status = params.get('status');
+    if (!orderNumber) return;
+
+    setPlacedNotice(`Order ${orderNumber} placed successfully${status ? ` · ${status}` : ''}.`);
+  }, []);
 
   const loadOrders = async () => {
     setLoading(true);
