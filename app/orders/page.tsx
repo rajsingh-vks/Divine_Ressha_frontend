@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import OrdersPanel from '../components/OrdersPanel';
@@ -12,7 +13,9 @@ export default function OrdersPage() {
     <>
       <Header />
       <main>
-        <OrdersPanel />
+        <Suspense fallback={null}>
+          <OrdersPanel />
+        </Suspense>
       </main>
       <Footer />
     </>
