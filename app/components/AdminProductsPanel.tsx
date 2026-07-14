@@ -8,6 +8,7 @@ import {
   ADMIN_AUTH_USER_KEY,
 } from '@/lib/constants/auth';
 import AdminSidebar from '@/app/components/AdminSidebar';
+import { proxyImageUrl } from '@/lib/utils/imageProxy';
 
 type AdminUser = { id?: string; email?: string; name?: string; role?: string };
 
@@ -232,7 +233,7 @@ export default function AdminProductsPanel() {
       image_url: product.image_url || '',
     });
     setImageFile(null);
-    setImagePreview(product.image_url || null);
+    setImagePreview(proxyImageUrl(product.image_url) || null);
     setModalOpen(true);
   };
 
@@ -404,7 +405,7 @@ export default function AdminProductsPanel() {
                       <td>
                         <div className="admin-product-cell">
                           {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} className="admin-product-thumb" />
+                            <img src={proxyImageUrl(product.image_url)} alt={product.name} className="admin-product-thumb" />
                           ) : (
                             <span className="admin-product-thumb" aria-hidden="true" />
                           )}
