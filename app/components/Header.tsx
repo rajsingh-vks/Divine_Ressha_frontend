@@ -124,7 +124,7 @@ export default function Header() {
                 <Link href="/profile" onClick={() => setProfileOpen(false)}>
                   {profileName}
                 </Link>
-                <Link href="/orders" onClick={() => setProfileOpen(false)}>
+                <Link href="/profile/order" onClick={() => setProfileOpen(false)}>
                   My Orders
                 </Link>
                 <Link href="/profile" onClick={() => setProfileOpen(false)}>
