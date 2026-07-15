@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
 import { proxyImageUrl } from '@/lib/utils/imageProxy';
+import OrdersPanel from './OrdersPanel';
 
 type Profile = {
   id?: string;
@@ -43,6 +44,24 @@ type EditableForm = {
   store_name: string;
 };
 
+type Address = {
+  id: string;
+  full_name: string;
+  phone: string;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  address_type: string;
+  is_default?: boolean;
+};
+
+type ProfilePanelProps = {
+  activeTab?: 'profile' | 'address' | 'order';
+};
+
 const readToken = () => (typeof window === 'undefined' ? '' : localStorage.getItem(AUTH_TOKEN_KEY) || '');
 const hasSession = () => typeof window !== 'undefined' && localStorage.getItem(AUTH_SESSION_KEY) === '1';
 const isAuthenticated = () => Boolean(readToken()) || hasSession();
@@ -66,13 +85,16 @@ const splitName = (name?: string | null) => {
   return { first_name: parts[0] || '', last_name: parts.slice(1).join(' ') };
 };
 
-export default function ProfilePanel() {
+export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [localUser, setLocalUser] = useState<LocalAuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [addressesError, setAddressesError] = useState('');
   const [form, setForm] = useState<EditableForm>({
     first_name: '',
     last_name: '',
@@ -139,6 +161,38 @@ export default function ProfilePanel() {
     void loadProfile();
   }, []);
 
+  useEffect(() => {
+    const loadAddresses = async () => {
+      if (activeTab !== 'address' || !isAuthenticated()) return;
+
+      setAddressesLoading(true);
+      setAddressesError('');
+
+      try {
+        const response = await fetch('/api/addresses', {
+          method: 'GET',
+          credentials: 'include',
+          headers: getAuthHeaders(),
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error('Unable to load addresses.');
+        }
+
+        const payload = (await response.json()) as Address[] | { items?: Address[]; data?: Address[] };
+        const nextAddresses = Array.isArray(payload) ? payload : payload.items || payload.data || [];
+        setAddresses(nextAddresses);
+      } catch (err) {
+        setAddressesError(err instanceof Error ? err.message : 'Unable to load addresses.');
+      } finally {
+        setAddressesLoading(false);
+      }
+    };
+
+    void loadAddresses();
+  }, [activeTab]);
+
   const displayName = useMemo(() => profile?.full_name || localUser?.name || 'Guest', [localUser?.name, profile?.full_name]);
   const displayEmail = profile?.email || localUser?.email || 'Not available';
   const initials = displayName
@@ -147,6 +201,9 @@ export default function ProfilePanel() {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'DR';
+  const isProfileTab = activeTab === 'profile';
+  const isAddressTab = activeTab === 'address';
+  const isOrderTab = activeTab === 'order';
 
   const handleChange = (field: keyof EditableForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((current) => ({
@@ -241,7 +298,7 @@ export default function ProfilePanel() {
           <nav className="profile-sidebar-nav" aria-label="Account sections">
             <div className="profile-sidebar-group">
               <p className="profile-sidebar-group-label">My orders</p>
-              <Link href="/orders" className="profile-sidebar-link">
+              <Link href="/profile/order" className={`profile-sidebar-link ${isOrderTab ? 'active' : ''}`}>
                 <span>Order history</span>
                 <strong>›</strong>
               </Link>
@@ -249,10 +306,10 @@ export default function ProfilePanel() {
 
             <div className="profile-sidebar-group">
               <p className="profile-sidebar-group-label">Account settings</p>
-              <span className="profile-sidebar-link active">
+              <Link href="/profile" className={`profile-sidebar-link ${isProfileTab ? 'active' : ''}`}>
                 <span>Profile information</span>
-              </span>
-              <Link href="/checkout" className="profile-sidebar-link">
+              </Link>
+              <Link href="/profile/address" className={`profile-sidebar-link ${isAddressTab ? 'active' : ''}`}>
                 <span>Manage addresses</span>
               </Link>
             </div>
@@ -288,153 +345,202 @@ export default function ProfilePanel() {
             <>
               {error ? <p className="profile-message">{error}</p> : null}
 
-              <section className="profile-panel-card">
-                <div className="profile-panel-head">
-                  <div>
-                    <p className="profile-section-label">Personal information</p>
-                    <h1>Profile Information</h1>
-                  </div>
-                  <button type="button" className="profile-link-button" onClick={() => setEditing((current) => !current)}>
-                    {editing ? 'Close' : 'Edit'}
-                  </button>
-                </div>
-
-                <form className="profile-info-form" onSubmit={handleSave}>
-                  <div className="profile-field-grid">
-                    <label className="profile-field">
-                      <span>First name</span>
-                      <input type="text" value={form.first_name} onChange={handleChange('first_name')} disabled={!editing} placeholder="First name" />
-                    </label>
-
-                    <label className="profile-field">
-                      <span>Last name</span>
-                      <input type="text" value={form.last_name} onChange={handleChange('last_name')} disabled={!editing} placeholder="Last name" />
-                    </label>
-                  </div>
-
-                  <div className="profile-field-section">
-                    <div className="profile-field-section-head">
-                      <strong>Email Address</strong>
-                      <button type="button" className="profile-inline-link" disabled>
-                        Edit
+              {isProfileTab ? (
+                <>
+                  <section className="profile-panel-card">
+                    <div className="profile-panel-head">
+                      <div>
+                        <p className="profile-section-label">Personal information</p>
+                        <h1>Profile Information</h1>
+                      </div>
+                      <button type="button" className="profile-link-button" onClick={() => setEditing((current) => !current)}>
+                        {editing ? 'Close' : 'Edit'}
                       </button>
                     </div>
-                    <input type="email" value={displayEmail} readOnly disabled className="profile-readonly-input" />
+
+                    <form className="profile-info-form" onSubmit={handleSave}>
+                      <div className="profile-field-grid">
+                        <label className="profile-field">
+                          <span>First name</span>
+                          <input type="text" value={form.first_name} onChange={handleChange('first_name')} disabled={!editing} placeholder="First name" />
+                        </label>
+
+                        <label className="profile-field">
+                          <span>Last name</span>
+                          <input type="text" value={form.last_name} onChange={handleChange('last_name')} disabled={!editing} placeholder="Last name" />
+                        </label>
+                      </div>
+
+                      <div className="profile-field-section">
+                        <div className="profile-field-section-head">
+                          <strong>Email Address</strong>
+                          <button type="button" className="profile-inline-link" disabled>
+                            Edit
+                          </button>
+                        </div>
+                        <input type="email" value={displayEmail} readOnly disabled className="profile-readonly-input" />
+                      </div>
+
+                      <div className="profile-field-section">
+                        <div className="profile-field-section-head">
+                          <strong>Mobile Number</strong>
+                          <button type="button" className="profile-inline-link" onClick={() => setEditing(true)}>
+                            Edit
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={form.phone}
+                          onChange={handleChange('phone')}
+                          disabled={!editing}
+                          placeholder="Add mobile number"
+                          className="profile-text-input"
+                        />
+                      </div>
+
+                      <div className="profile-field-grid profile-field-grid-single">
+                        <label className="profile-field">
+                          <span>Avatar URL</span>
+                          <input type="url" value={form.avatar_url} onChange={handleChange('avatar_url')} disabled={!editing} placeholder="https://..." />
+                        </label>
+
+                        <label className="profile-field">
+                          <span>Store name</span>
+                          <input type="text" value={form.store_name} onChange={handleChange('store_name')} disabled={!editing} placeholder="Store name" />
+                        </label>
+                      </div>
+
+                      <div className="profile-field-section">
+                        <div className="profile-field-section-head">
+                          <strong>About</strong>
+                        </div>
+                        <textarea
+                          value={form.bio}
+                          onChange={handleChange('bio')}
+                          disabled={!editing}
+                          rows={4}
+                          className="profile-textarea"
+                          placeholder="Write something about you or your store"
+                        />
+                      </div>
+
+                      <div className="profile-info-meta">
+                        <div>
+                          <span>Role</span>
+                          <strong className={pillClass(activeRole)}>{activeRole}</strong>
+                        </div>
+                        <div>
+                          <span>Status</span>
+                          <strong className={pillClass(activeStatus)}>{activeStatus}</strong>
+                        </div>
+                        <div>
+                          <span>Email verified</span>
+                          <strong className={profile?.email_verified ? 'profile-pill active' : 'profile-pill pending'}>
+                            {profile?.email_verified ? 'Yes' : 'No'}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>User ID</span>
+                          <strong>{profile?.id || 'Not available'}</strong>
+                        </div>
+                      </div>
+
+                      {editing ? (
+                        <div className="profile-edit-actions">
+                          <button type="submit" className="profile-save-button" disabled={saving}>
+                            {saving ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            className="profile-cancel-button"
+                            onClick={() => {
+                              const { first_name, last_name } = splitName(profile?.full_name || localUser?.name || '');
+                              setForm({
+                                first_name,
+                                last_name,
+                                phone: profile?.phone || '',
+                                avatar_url: profile?.avatar_url || '',
+                                bio: profile?.bio || '',
+                                store_name: profile?.store_name || '',
+                              });
+                              setEditing(false);
+                            }}
+                            disabled={saving}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : null}
+                    </form>
+                  </section>
+
+                  <div className="profile-quick-grid">
+                    <article className="profile-panel-card compact">
+                      <h2>About</h2>
+                      <p className="profile-copy-text">{profile?.bio || 'No bio added yet.'}</p>
+                    </article>
+
+                    <article className="profile-panel-card compact">
+                      <h2>Timeline</h2>
+                      <dl className="profile-timeline-grid">
+                        <div>
+                          <dt>Joined</dt>
+                          <dd>{formatDate(profile?.created_at)}</dd>
+                        </div>
+                        <div>
+                          <dt>Last updated</dt>
+                          <dd>{formatDate(profile?.updated_at)}</dd>
+                        </div>
+                      </dl>
+                    </article>
                   </div>
+                </>
+              ) : null}
 
-                  <div className="profile-field-section">
-                    <div className="profile-field-section-head">
-                      <strong>Mobile Number</strong>
-                      <button type="button" className="profile-inline-link" onClick={() => setEditing(true)}>
-                        Edit
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={form.phone}
-                      onChange={handleChange('phone')}
-                      disabled={!editing}
-                      placeholder="Add mobile number"
-                      className="profile-text-input"
-                    />
-                  </div>
-
-                  <div className="profile-field-grid profile-field-grid-single">
-                    <label className="profile-field">
-                      <span>Avatar URL</span>
-                      <input type="url" value={form.avatar_url} onChange={handleChange('avatar_url')} disabled={!editing} placeholder="https://..." />
-                    </label>
-
-                    <label className="profile-field">
-                      <span>Store name</span>
-                      <input type="text" value={form.store_name} onChange={handleChange('store_name')} disabled={!editing} placeholder="Store name" />
-                    </label>
-                  </div>
-
-                  <div className="profile-field-section">
-                    <div className="profile-field-section-head">
-                      <strong>About</strong>
-                    </div>
-                    <textarea
-                      value={form.bio}
-                      onChange={handleChange('bio')}
-                      disabled={!editing}
-                      rows={4}
-                      className="profile-textarea"
-                      placeholder="Write something about you or your store"
-                    />
-                  </div>
-
-                  <div className="profile-info-meta">
+              {isAddressTab ? (
+                <section className="profile-panel-card">
+                  <div className="profile-panel-head">
                     <div>
-                      <span>Role</span>
-                      <strong className={pillClass(activeRole)}>{activeRole}</strong>
+                      <p className="profile-section-label">Account settings</p>
+                      <h1>Manage Addresses</h1>
                     </div>
-                    <div>
-                      <span>Status</span>
-                      <strong className={pillClass(activeStatus)}>{activeStatus}</strong>
-                    </div>
-                    <div>
-                      <span>Email verified</span>
-                      <strong className={profile?.email_verified ? 'profile-pill active' : 'profile-pill pending'}>
-                        {profile?.email_verified ? 'Yes' : 'No'}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>User ID</span>
-                      <strong>{profile?.id || 'Not available'}</strong>
-                    </div>
+                    <Link href="/checkout" className="profile-link-button">
+                      Add / edit in checkout
+                    </Link>
                   </div>
 
-                  {editing ? (
-                    <div className="profile-edit-actions">
-                      <button type="submit" className="profile-save-button" disabled={saving}>
-                        {saving ? 'Saving…' : 'Save'}
-                      </button>
-                      <button
-                        type="button"
-                        className="profile-cancel-button"
-                        onClick={() => {
-                          const { first_name, last_name } = splitName(profile?.full_name || localUser?.name || '');
-                          setForm({
-                            first_name,
-                            last_name,
-                            phone: profile?.phone || '',
-                            avatar_url: profile?.avatar_url || '',
-                            bio: profile?.bio || '',
-                            store_name: profile?.store_name || '',
-                          });
-                          setEditing(false);
-                        }}
-                        disabled={saving}
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                  {addressesLoading ? <p className="profile-muted">Loading addresses…</p> : null}
+                  {addressesError ? <p className="profile-message">{addressesError}</p> : null}
+
+                  {!addressesLoading && !addressesError ? (
+                    addresses.length ? (
+                      <div className="profile-address-list">
+                        {addresses.map((address) => (
+                          <article key={address.id} className="profile-address-card">
+                            <div className="profile-address-card-head">
+                              <strong>{address.full_name}</strong>
+                              {address.is_default ? <span className="profile-pill active">Default</span> : null}
+                            </div>
+                            <p>{[address.line1, address.line2, `${address.city}, ${address.state} ${address.postal_code}`, address.country].filter(Boolean).join(', ')}</p>
+                            <small>
+                              {address.phone} · {address.address_type}
+                            </small>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="profile-empty-state">
+                        <p>No saved addresses yet.</p>
+                        <Link href="/checkout" className="profile-save-button">
+                          Add first address
+                        </Link>
+                      </div>
+                    )
                   ) : null}
-                </form>
-              </section>
+                </section>
+              ) : null}
 
-              <div className="profile-quick-grid">
-                <article className="profile-panel-card compact">
-                  <h2>About</h2>
-                  <p className="profile-copy-text">{profile?.bio || 'No bio added yet.'}</p>
-                </article>
-
-                <article className="profile-panel-card compact">
-                  <h2>Timeline</h2>
-                  <dl className="profile-timeline-grid">
-                    <div>
-                      <dt>Joined</dt>
-                      <dd>{formatDate(profile?.created_at)}</dd>
-                    </div>
-                    <div>
-                      <dt>Last updated</dt>
-                      <dd>{formatDate(profile?.updated_at)}</dd>
-                    </div>
-                  </dl>
-                </article>
-              </div>
+              {isOrderTab ? <OrdersPanel /> : null}
             </>
           )}
         </main>

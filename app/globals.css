@@ -1892,6 +1892,41 @@ img {
   color: #b42318;
 }
 
+.profile-address-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.profile-address-card {
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.profile-address-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.profile-address-card p,
+.profile-address-card small {
+  margin: 0;
+  color: #5a5a5a;
+  line-height: 1.6;
+}
+
+.profile-empty-state {
+  display: grid;
+  gap: 0.9rem;
+  justify-items: start;
+  padding: 1rem 0;
+}
+
 @media (max-width: 1080px) {
   .profile-account-layout {
     grid-template-columns: 1fr;
