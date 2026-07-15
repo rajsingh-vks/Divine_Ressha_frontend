@@ -8,6 +8,11 @@
 export function proxyImageUrl(url: string | null | undefined, fallback = '/images/banner.jpg'): string {
   if (!url) return fallback;
 
+  // Backend-relative media paths should also be proxied.
+  if (url.startsWith('/media/') || url.startsWith('/api/media/')) {
+    return `/api/media?path=${encodeURIComponent(url)}`;
+  }
+
   // Already relative or HTTPS – no proxy needed.
   if (url.startsWith('/') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
