@@ -1,4 +1,5 @@
 import { BACKEND_API_URL } from '@/lib/constants/auth';
+import { proxyImageUrl } from '../utils/imageProxy';
 
 export interface Product {
   id: string;
@@ -94,7 +95,7 @@ const mapBackendProductToUi = (product: BackendProduct, index: number): Product 
     title: product.name || `Product ${index + 1}`,
     tag,
     notes,
-    image: product.image_url ? (product.image_url.startsWith('http://') ? `/api/media?url=${encodeURIComponent(product.image_url)}` : product.image_url) : (products[index % products.length]?.image || products[0].image),
+    image: proxyImageUrl(product.image_url, products[index % products.length]?.image || products[0].image),
     price: Number(product.price ?? 0),
     description: product.brand || undefined,
   };
