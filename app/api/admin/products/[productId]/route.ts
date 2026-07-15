@@ -41,6 +41,11 @@ async function proxy(request: Request, productId: string) {
     return NextResponse.json({ detail: 'Unable to reach product service.' }, { status: 502 });
   }
 
+  // 204 / 205 — no content, return empty response to avoid JSON parse errors on the client.
+  if (backendResponse.status === 204 || backendResponse.status === 205) {
+    return new NextResponse(null, { status: backendResponse.status });
+  }
+
   let payload: unknown = {};
   try {
     payload = text ? JSON.parse(text) : {};

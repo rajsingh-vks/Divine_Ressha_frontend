@@ -107,6 +107,8 @@ export default function AdminProductsPanel() {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getAuthHeaders = () => {
@@ -290,8 +292,8 @@ export default function AdminProductsPanel() {
   };
 
   const handleDelete = async (productId: string) => {
-    const shouldDelete = window.confirm('Delete this product?');
-    if (!shouldDelete) return;
+    setDeleting(true);
+    setFetchError('');
 
     try {
       const response = await fetch(`/api/admin/products/${productId}`, {
@@ -300,15 +302,20 @@ export default function AdminProductsPanel() {
         headers: getAuthHeaders(),
       });
 
-      const result = (await response.json()) as ApiErrorPayload;
-
       if (!response.ok) {
+        const text = await response.text();
+        let result: ApiErrorPayload = {};
+        try { result = text ? JSON.parse(text) as ApiErrorPayload : {}; } catch { result = {}; }
         throw new Error(getApiErrorMessage(result, 'Unable to delete product.'));
       }
 
+      // Success (204 No Content or 200) — no body to parse.
+      setDeleteConfirmProduct(null);
       await fetchProducts();
     } catch (error) {
       setFetchError(error instanceof Error ? error.message : 'Unable to delete product.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -321,6 +328,7 @@ export default function AdminProductsPanel() {
   }
 
   return (
+    <>
     <section className="admin-dashboard-shell">
       <div className="admin-dashboard-layout">
         <AdminSidebar displayName={displayName} initials={initials} onLogout={handleLogout} />
@@ -428,7 +436,7 @@ export default function AdminProductsPanel() {
                           <button type="button" className="admin-row-button" onClick={() => openEditModal(product)}>
                             Edit
                           </button>
-                          <button type="button" className="admin-row-button danger" onClick={() => handleDelete(product.id)}>
+                          <button type="button" className="admin-row-button danger" onClick={() => setDeleteConfirmProduct(product)}>
                             Delete
                           </button>
                         </div>
@@ -589,5 +597,42 @@ export default function AdminProductsPanel() {
         </div>
       )}
     </section>
+
+      {deleteConfirmProduct ? (
+        <div className="admin-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+          <div className="admin-modal admin-delete-modal">
+            <div className="admin-delete-modal-icon" aria-hidden="true">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+                <path d="M9 6V4h6v2" />
+              </svg>
+            </div>
+            <h2 id="delete-modal-title">Delete product?</h2>
+            <p>You are about to permanently delete <strong>{deleteConfirmProduct?.name}</strong>. This action cannot be undone.</p>
+            <div className="admin-delete-modal-actions">
+              <button
+                type="button"
+                className="admin-delete-confirm-btn"
+                onClick={() => deleteConfirmProduct && handleDelete(deleteConfirmProduct.id)}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Yes, delete'}
+              </button>
+              <button
+                type="button"
+                className="admin-ghost-button"
+                onClick={() => setDeleteConfirmProduct(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
