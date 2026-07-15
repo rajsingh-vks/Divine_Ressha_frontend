@@ -58,6 +58,48 @@ type Address = {
   is_default?: boolean;
 };
 
+type AddressFormState = {
+  full_name: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  address_type: string;
+  is_default: boolean;
+};
+
+const EMPTY_ADDRESS_FORM: AddressFormState = {
+  full_name: '',
+  phone: '',
+  line1: '',
+  line2: '',
+  city: '',
+  state: '',
+  postal_code: '',
+  country: 'India',
+  address_type: 'home',
+  is_default: false,
+};
+
+const getApiErrorMessage = async (response: Response, fallback: string) => {
+  try {
+    const payload = (await response.json()) as { detail?: string | Array<{ msg?: string }>; message?: string; error?: string };
+    if (Array.isArray(payload.detail)) return payload.detail[0]?.msg || fallback;
+    if (typeof payload.detail === 'string') return payload.detail;
+    return payload.message || payload.error || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const buildAddressLabel = (address: Address) =>
+  [address.line1, address.line2, `${address.city}, ${address.state} ${address.postal_code}`, address.country]
+    .filter(Boolean)
+    .join(', ');
+
 type ProfilePanelProps = {
   activeTab?: 'profile' | 'address' | 'order';
 };
@@ -95,6 +137,13 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [addressesError, setAddressesError] = useState('');
+  const [addressSuccess, setAddressSuccess] = useState('');
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addressForm, setAddressForm] = useState<AddressFormState>({ ...EMPTY_ADDRESS_FORM });
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [settingDefaultId, setSettingDefaultId] = useState('');
+  const [deletingId, setDeletingId] = useState('');
   const [form, setForm] = useState<EditableForm>({
     first_name: '',
     last_name: '',
@@ -161,36 +210,33 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
     void loadProfile();
   }, []);
 
+  const loadAddresses = async () => {
+    setAddressesLoading(true);
+    setAddressesError('');
+    try {
+      const response = await fetch('/api/addresses', {
+        method: 'GET',
+        credentials: 'include',
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
+      if (!response.ok) throw new Error('Unable to load addresses.');
+      const payload = (await response.json()) as Address[] | { items?: Address[]; data?: Address[] };
+      const nextAddresses = Array.isArray(payload) ? payload : payload.items || payload.data || [];
+      setAddresses(nextAddresses);
+    } catch (err) {
+      setAddressesError(err instanceof Error ? err.message : 'Unable to load addresses.');
+    } finally {
+      setAddressesLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadAddresses = async () => {
-      if (activeTab !== 'address' || !isAuthenticated()) return;
-
-      setAddressesLoading(true);
-      setAddressesError('');
-
-      try {
-        const response = await fetch('/api/addresses', {
-          method: 'GET',
-          credentials: 'include',
-          headers: getAuthHeaders(),
-          cache: 'no-store',
-        });
-
-        if (!response.ok) {
-          throw new Error('Unable to load addresses.');
-        }
-
-        const payload = (await response.json()) as Address[] | { items?: Address[]; data?: Address[] };
-        const nextAddresses = Array.isArray(payload) ? payload : payload.items || payload.data || [];
-        setAddresses(nextAddresses);
-      } catch (err) {
-        setAddressesError(err instanceof Error ? err.message : 'Unable to load addresses.');
-      } finally {
-        setAddressesLoading(false);
-      }
-    };
-
+    if (activeTab !== 'address' || !isAuthenticated()) return;
     void loadAddresses();
+    setShowAddressForm(false);
+    setEditingAddressId(null);
+    setAddressForm({ ...EMPTY_ADDRESS_FORM });
   }, [activeTab]);
 
   const displayName = useMemo(() => profile?.full_name || localUser?.name || 'Guest', [localUser?.name, profile?.full_name]);
@@ -201,6 +247,108 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'DR';
+  const handleAddressField = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target;
+    const checked = 'checked' in event.target ? (event.target as HTMLInputElement).checked : false;
+    setAddressForm((current) => ({
+      ...current,
+      [name]: event.target instanceof HTMLInputElement && event.target.type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const resetAddressForm = () => {
+    setEditingAddressId(null);
+    setAddressForm({ ...EMPTY_ADDRESS_FORM });
+    setShowAddressForm(false);
+  };
+
+  const handleEditAddress = (address: Address) => {
+    setEditingAddressId(address.id);
+    setAddressForm({
+      full_name: address.full_name,
+      phone: address.phone,
+      line1: address.line1,
+      line2: address.line2 || '',
+      city: address.city,
+      state: address.state,
+      postal_code: address.postal_code,
+      country: address.country,
+      address_type: address.address_type,
+      is_default: Boolean(address.is_default),
+    });
+    setShowAddressForm(true);
+    setAddressSuccess('');
+    setAddressesError('');
+  };
+
+  const handleSaveAddress = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSavingAddress(true);
+    setAddressesError('');
+    setAddressSuccess('');
+    const payload = { ...addressForm, line2: addressForm.line2 || null };
+    try {
+      const response = await fetch(
+        editingAddressId ? `/api/addresses/${editingAddressId}` : '/api/addresses',
+        {
+          method: editingAddressId ? 'PUT' : 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', ...(getAuthHeaders() || {}) },
+          body: JSON.stringify(payload),
+        }
+      );
+      if (!response.ok) throw new Error(await getApiErrorMessage(response, 'Unable to save address.'));
+      await loadAddresses();
+      setAddressSuccess(editingAddressId ? 'Address updated.' : 'Address saved.');
+      resetAddressForm();
+    } catch (err) {
+      setAddressesError(err instanceof Error ? err.message : 'Unable to save address.');
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    if (!window.confirm('Delete this address?')) return;
+    setDeletingId(addressId);
+    setAddressesError('');
+    setAddressSuccess('');
+    try {
+      const response = await fetch(`/api/addresses/${addressId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await getApiErrorMessage(response, 'Unable to delete address.'));
+      await loadAddresses();
+      setAddressSuccess('Address deleted.');
+    } catch (err) {
+      setAddressesError(err instanceof Error ? err.message : 'Unable to delete address.');
+    } finally {
+      setDeletingId('');
+    }
+  };
+
+  const handleSetDefault = async (addressId: string) => {
+    setSettingDefaultId(addressId);
+    setAddressesError('');
+    setAddressSuccess('');
+    try {
+      const response = await fetch(`/api/addresses/${addressId}/default`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await getApiErrorMessage(response, 'Unable to set default.'));
+      await loadAddresses();
+      setAddressSuccess('Default address updated.');
+    } catch (err) {
+      setAddressesError(err instanceof Error ? err.message : 'Unable to set default.');
+    } finally {
+      setSettingDefaultId('');
+    }
+  };
+
   const isProfileTab = activeTab === 'profile';
   const isAddressTab = activeTab === 'address';
   const isOrderTab = activeTab === 'order';
@@ -504,38 +652,127 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
                       <p className="profile-section-label">Account settings</p>
                       <h1>Manage Addresses</h1>
                     </div>
-                    <Link href="/checkout" className="profile-link-button">
-                      Add / edit in checkout
-                    </Link>
+                    {!showAddressForm ? (
+                      <button
+                        type="button"
+                        className="profile-link-button"
+                        onClick={() => { setShowAddressForm(true); setEditingAddressId(null); setAddressForm({ ...EMPTY_ADDRESS_FORM }); }}
+                      >
+                        + Add address
+                      </button>
+                    ) : null}
                   </div>
 
                   {addressesLoading ? <p className="profile-muted">Loading addresses…</p> : null}
                   {addressesError ? <p className="profile-message">{addressesError}</p> : null}
+                  {addressSuccess ? <p className="profile-message profile-message-success">{addressSuccess}</p> : null}
 
-                  {!addressesLoading && !addressesError ? (
-                    addresses.length ? (
-                      <div className="profile-address-list">
-                        {addresses.map((address) => (
-                          <article key={address.id} className="profile-address-card">
-                            <div className="profile-address-card-head">
-                              <strong>{address.full_name}</strong>
-                              {address.is_default ? <span className="profile-pill active">Default</span> : null}
-                            </div>
-                            <p>{[address.line1, address.line2, `${address.city}, ${address.state} ${address.postal_code}`, address.country].filter(Boolean).join(', ')}</p>
-                            <small>
-                              {address.phone} · {address.address_type}
-                            </small>
-                          </article>
-                        ))}
+                  {!addressesLoading && addresses.length ? (
+                    <div className="profile-address-list">
+                      {addresses.map((address) => (
+                        <article key={address.id} className="profile-address-card">
+                          <div className="profile-address-card-head">
+                            <strong>{address.full_name}</strong>
+                            {address.is_default ? <span className="profile-pill active">Default</span> : null}
+                          </div>
+                          <p>{buildAddressLabel(address)}</p>
+                          <small>{address.phone} · {address.address_type}</small>
+                          <div className="profile-address-actions">
+                            {!address.is_default ? (
+                              <button
+                                type="button"
+                                className="profile-addr-btn"
+                                onClick={() => handleSetDefault(address.id)}
+                                disabled={settingDefaultId === address.id}
+                              >
+                                {settingDefaultId === address.id ? 'Saving…' : 'Set default'}
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="profile-addr-btn"
+                              onClick={() => handleEditAddress(address)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="profile-addr-btn danger"
+                              onClick={() => handleDeleteAddress(address.id)}
+                              disabled={deletingId === address.id}
+                            >
+                              {deletingId === address.id ? 'Deleting…' : 'Delete'}
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : !addressesLoading && !showAddressForm ? (
+                    <div className="profile-empty-state">
+                      <p>No saved addresses yet. Add your first address.</p>
+                    </div>
+                  ) : null}
+
+                  {showAddressForm ? (
+                    <form className="profile-address-form" onSubmit={handleSaveAddress}>
+                      <p className="profile-section-label" style={{ margin: '0.5rem 0 0.75rem' }}>
+                        {editingAddressId ? 'Edit address' : 'New address'}
+                      </p>
+                      <div className="profile-addr-form-grid">
+                        <label className="profile-field">
+                          <span>Full name</span>
+                          <input name="full_name" value={addressForm.full_name} onChange={handleAddressField} required />
+                        </label>
+                        <label className="profile-field">
+                          <span>Phone</span>
+                          <input name="phone" value={addressForm.phone} onChange={handleAddressField} required />
+                        </label>
+                        <label className="profile-field profile-addr-full">
+                          <span>Address line 1</span>
+                          <input name="line1" value={addressForm.line1} onChange={handleAddressField} required />
+                        </label>
+                        <label className="profile-field profile-addr-full">
+                          <span>Address line 2 (optional)</span>
+                          <input name="line2" value={addressForm.line2} onChange={handleAddressField} />
+                        </label>
+                        <label className="profile-field">
+                          <span>City</span>
+                          <input name="city" value={addressForm.city} onChange={handleAddressField} required />
+                        </label>
+                        <label className="profile-field">
+                          <span>State</span>
+                          <input name="state" value={addressForm.state} onChange={handleAddressField} required />
+                        </label>
+                        <label className="profile-field">
+                          <span>Postal code</span>
+                          <input name="postal_code" value={addressForm.postal_code} onChange={handleAddressField} required />
+                        </label>
+                        <label className="profile-field">
+                          <span>Country</span>
+                          <input name="country" value={addressForm.country} onChange={handleAddressField} required />
+                        </label>
+                        <label className="profile-field">
+                          <span>Address type</span>
+                          <select name="address_type" value={addressForm.address_type} onChange={handleAddressField} className="profile-addr-select">
+                            <option value="home">Home</option>
+                            <option value="work">Work</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </label>
+                        <label className="profile-field profile-addr-checkbox">
+                          <input type="checkbox" name="is_default" checked={addressForm.is_default} onChange={handleAddressField} />
+                          <span>Set as default address</span>
+                        </label>
                       </div>
-                    ) : (
-                      <div className="profile-empty-state">
-                        <p>No saved addresses yet.</p>
-                        <Link href="/checkout" className="profile-save-button">
-                          Add first address
-                        </Link>
+                      <div className="profile-edit-actions" style={{ marginTop: '1rem' }}>
+                        <button type="submit" className="profile-save-button" disabled={savingAddress}>
+                          {savingAddress ? 'Saving…' : editingAddressId ? 'Update address' : 'Save address'}
+                        </button>
+                        <button type="button" className="profile-cancel-button" onClick={resetAddressForm} disabled={savingAddress}>
+                          Cancel
+                        </button>
                       </div>
-                    )
+                    </form>
                   ) : null}
                 </section>
               ) : null}

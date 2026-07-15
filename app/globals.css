@@ -1927,6 +1927,96 @@ img {
   padding: 1rem 0;
 }
 
+.profile-address-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.6rem;
+}
+
+.profile-addr-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  background: rgba(40, 116, 240, 0.08);
+  color: #2874f0;
+  transition: background 0.15s ease;
+}
+
+.profile-addr-btn:hover {
+  background: rgba(40, 116, 240, 0.16);
+}
+
+.profile-addr-btn.danger {
+  background: rgba(180, 35, 24, 0.07);
+  color: #b42318;
+}
+
+.profile-addr-btn.danger:hover {
+  background: rgba(180, 35, 24, 0.14);
+}
+
+.profile-addr-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.profile-address-form {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.profile-addr-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.profile-addr-full {
+  grid-column: 1 / -1;
+}
+
+.profile-addr-select {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  color: #1a1a1a;
+  padding: 0.9rem 1rem;
+  font: inherit;
+  outline: none;
+  appearance: auto;
+}
+
+.profile-addr-checkbox {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.profile-addr-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.profile-message-success {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+@media (max-width: 600px) {
+  .profile-addr-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 1080px) {
   .profile-account-layout {
     grid-template-columns: 1fr;
