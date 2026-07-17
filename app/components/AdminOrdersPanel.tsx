@@ -35,6 +35,16 @@ type Order = {
   order_number: string;
   user_id: string;
   status: string;
+  payment_status?: string | null;
+  return_status?: string | null;
+  return_reason?: string | null;
+  return_requested_at?: string | null;
+  refund_status?: string | null;
+  refund_amount?: number | null;
+  refund_reason?: string | null;
+  refund_reference?: string | null;
+  refund_requested_at?: string | null;
+  refunded_at?: string | null;
   items: OrderItem[];
   shipping_address: ShippingAddress;
   total_items: number;
@@ -42,6 +52,22 @@ type Order = {
   notes?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type RefundSummary = {
+  order_id: string;
+  order_number: string;
+  user_id: string;
+  order_status?: string | null;
+  payment_status?: string | null;
+  return_status?: string | null;
+  refund_status?: string | null;
+  refund_amount?: number | null;
+  refund_reason?: string | null;
+  refund_reference?: string | null;
+  refund_requested_at?: string | null;
+  refunded_at?: string | null;
+  updated_at?: string | null;
 };
 
 type FilterTab = 'All' | 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
@@ -53,6 +79,7 @@ const formatCurrency = (amount: number) =>
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+const prettyValue = (value?: string | null) => (value ? value.replace(/_/g, ' ') : '—');
 
 const getApiErrorMessage = async (response: Response, fallback: string) => {
   try {
@@ -73,6 +100,13 @@ export default function AdminOrdersPanel() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterTab>('All');
   const [updatingOrderId, setUpdatingOrderId] = useState('');
+  const [updatingRefundOrderId, setUpdatingRefundOrderId] = useState('');
+  const [requestingReturnOrderId, setRequestingReturnOrderId] = useState('');
+  const [refundSummary, setRefundSummary] = useState<RefundSummary | null>(null);
+  const [refundSummaryLoading, setRefundSummaryLoading] = useState(false);
+  const [refundSummaryError, setRefundSummaryError] = useState('');
+  const [refundSummaryOrderId, setRefundSummaryOrderId] = useState('');
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem(ADMIN_AUTH_TOKEN_KEY);
@@ -177,6 +211,119 @@ export default function AdminOrdersPanel() {
     }
   };
 
+  const handleReturnRequest = async (orderId: string) => {
+    const reason = window.prompt('Reason for return request (optional)') || '';
+    setRequestingReturnOrderId(orderId);
+    setFetchError('');
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}/return`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getAuthHeaders() || {}),
+        },
+        body: JSON.stringify({ reason: reason.trim() || null }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await getApiErrorMessage(response, 'Unable to request return.'));
+      }
+
+      await fetchOrders();
+    } catch (error) {
+      setFetchError(error instanceof Error ? error.message : 'Unable to request return.');
+    } finally {
+      setRequestingReturnOrderId('');
+    }
+  };
+
+  const handleRefundUpdate = async (order: Order) => {
+    const currentStatus = (order.refund_status || 'pending').toLowerCase();
+    const statusInput = window.prompt('Refund status: pending | processed | rejected', currentStatus) || '';
+    const nextStatus = statusInput.trim().toLowerCase();
+
+    if (!['pending', 'processed', 'rejected'].includes(nextStatus)) {
+      if (statusInput.trim()) {
+        setFetchError('Refund status must be pending, processed, or rejected.');
+      }
+      return;
+    }
+
+    const reason = window.prompt('Refund reason (optional)', order.refund_reason || '') || '';
+    const reference = window.prompt('Refund reference (optional)', order.refund_reference || '') || '';
+
+    setUpdatingRefundOrderId(order.id);
+    setFetchError('');
+
+    try {
+      const response = await fetch(`/api/orders/${order.id}/refund`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getAuthHeaders() || {}),
+        },
+        body: JSON.stringify({
+          status: nextStatus,
+          refund_status: nextStatus,
+          reason: reason.trim() || null,
+          refund_reason: reason.trim() || null,
+          refund_reference: reference.trim() || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await getApiErrorMessage(response, 'Unable to update refund.'));
+      }
+
+      await fetchOrders();
+    } catch (error) {
+      setFetchError(error instanceof Error ? error.message : 'Unable to update refund.');
+    } finally {
+      setUpdatingRefundOrderId('');
+    }
+  };
+
+  const loadRefundSummary = async (orderId: string) => {
+    setRefundSummaryOrderId(orderId);
+    setRefundModalOpen(true);
+    setRefundSummaryLoading(true);
+    setRefundSummaryError('');
+    setRefundSummary(null);
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}/refund`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          ...(getAuthHeaders() || {}),
+        },
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        throw new Error(await getApiErrorMessage(response, 'Unable to load refund summary.'));
+      }
+
+      const payload = (await response.json()) as RefundSummary;
+      setRefundSummary(payload);
+    } catch (error) {
+      setRefundSummary(null);
+      setRefundSummaryError(error instanceof Error ? error.message : 'Unable to load refund summary.');
+    } finally {
+      setRefundSummaryLoading(false);
+    }
+  };
+
+  const closeRefundModal = () => {
+    setRefundModalOpen(false);
+    setRefundSummary(null);
+    setRefundSummaryError('');
+    setRefundSummaryOrderId('');
+  };
+
   if (!ready) {
     return (
       <section className="admin-dashboard-shell">
@@ -243,7 +390,11 @@ export default function AdminOrdersPanel() {
                   <th>Items</th>
                   <th>Total</th>
                   <th>Address</th>
+                  <th>Payment</th>
                   <th>Status</th>
+                  <th>Return</th>
+                  <th>Refund</th>
+                  <th>Actions</th>
                   <th>Placed</th>
                 </tr>
               </thead>
@@ -276,6 +427,7 @@ export default function AdminOrdersPanel() {
                           <small>{order.shipping_address.line1}, {order.shipping_address.state}</small>
                         </div>
                       </td>
+                      <td>{prettyValue(order.payment_status || 'unknown')}</td>
                       <td>
                         <div className="admin-order-status-wrap">
                           <span className={`admin-status-badge admin-order-status-badge ${order.status.toLowerCase()}`}>{order.status}</span>
@@ -290,12 +442,61 @@ export default function AdminOrdersPanel() {
                           </select>
                         </div>
                       </td>
+                      <td>
+                        <div className="admin-order-cell">
+                          <strong>{prettyValue(order.return_status || 'not_requested')}</strong>
+                          <small>{order.return_reason || '—'}</small>
+                          {order.return_requested_at ? <small>{formatDate(order.return_requested_at)}</small> : null}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="admin-order-cell">
+                          <strong>{prettyValue(order.refund_status || 'not_required')}</strong>
+                          <small>
+                            {order.refund_amount
+                              ? `${formatCurrency(Number(order.refund_amount || 0))}${order.refund_reference ? ` · ${order.refund_reference}` : ''}`
+                              : order.refund_reference || '—'}
+                          </small>
+                          {order.refund_requested_at ? <small>Req: {formatDate(order.refund_requested_at)}</small> : null}
+                          {order.refunded_at ? <small>Done: {formatDate(order.refunded_at)}</small> : null}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="admin-order-status-wrap">
+                          <button
+                            type="button"
+                            className="checkout-secondary-button"
+                            onClick={() => handleRefundUpdate(order)}
+                            disabled={updatingRefundOrderId === order.id || (order.payment_status || '').toLowerCase() !== 'paid'}
+                          >
+                            {updatingRefundOrderId === order.id ? 'Updating…' : 'Update refund'}
+                          </button>
+                          {order.status.toLowerCase() === 'delivered' && (order.return_status || '').toLowerCase() !== 'requested' ? (
+                            <button
+                              type="button"
+                              className="checkout-link-button"
+                              onClick={() => handleReturnRequest(order.id)}
+                              disabled={requestingReturnOrderId === order.id}
+                            >
+                              {requestingReturnOrderId === order.id ? 'Requesting…' : 'Request return'}
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="checkout-link-button"
+                            onClick={() => loadRefundSummary(order.id)}
+                            disabled={refundSummaryLoading && refundSummaryOrderId === order.id}
+                          >
+                            {refundSummaryLoading && refundSummaryOrderId === order.id ? 'Loading…' : 'Refund summary'}
+                          </button>
+                        </div>
+                      </td>
                       <td>{formatDate(order.created_at)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="admin-table-empty">
+                    <td colSpan={11} className="admin-table-empty">
                       {loadingOrders ? 'Loading orders…' : 'No orders found.'}
                     </td>
                   </tr>
@@ -305,6 +506,78 @@ export default function AdminOrdersPanel() {
           </div>
         </main>
       </div>
+
+      {refundModalOpen ? (
+        <div className="admin-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="refund-summary-title" onClick={closeRefundModal}>
+          <div className="admin-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h2 id="refund-summary-title">Refund Summary</h2>
+              <button type="button" className="admin-modal-close" onClick={closeRefundModal} aria-label="Close">✕</button>
+            </div>
+
+            <div className="admin-product-form">
+              {refundSummaryLoading ? <p className="checkout-muted">Loading refund data…</p> : null}
+              {refundSummaryError ? <p className="admin-products-error">{refundSummaryError}</p> : null}
+
+              {refundSummary ? (
+                <div className="order-status-history">
+                  <h3>{refundSummary.order_number}</h3>
+                  <ul>
+                    <li>
+                      <strong>Order / User</strong>
+                      <span>{refundSummary.order_id} · {refundSummary.user_id}</span>
+                    </li>
+                    <li>
+                      <strong>Order status</strong>
+                      <span>{prettyValue(refundSummary.order_status)}</span>
+                    </li>
+                    <li>
+                      <strong>Payment status</strong>
+                      <span>{prettyValue(refundSummary.payment_status)}</span>
+                    </li>
+                    <li>
+                      <strong>Return status</strong>
+                      <span>{prettyValue(refundSummary.return_status)}</span>
+                    </li>
+                    <li>
+                      <strong>Refund status</strong>
+                      <span>{prettyValue(refundSummary.refund_status)}</span>
+                    </li>
+                    <li>
+                      <strong>Refund amount</strong>
+                      <span>{formatCurrency(Number(refundSummary.refund_amount || 0))}</span>
+                    </li>
+                    <li>
+                      <strong>Refund reason</strong>
+                      <span>{refundSummary.refund_reason || '—'}</span>
+                    </li>
+                    <li>
+                      <strong>Refund reference</strong>
+                      <span>{refundSummary.refund_reference || '—'}</span>
+                    </li>
+                    <li>
+                      <strong>Requested at</strong>
+                      <span>{refundSummary.refund_requested_at ? formatDate(refundSummary.refund_requested_at) : '—'}</span>
+                    </li>
+                    <li>
+                      <strong>Refunded at</strong>
+                      <span>{refundSummary.refunded_at ? formatDate(refundSummary.refunded_at) : '—'}</span>
+                    </li>
+                    <li>
+                      <strong>Last updated</strong>
+                      <span>{refundSummary.updated_at ? formatDate(refundSummary.updated_at) : '—'}</span>
+                    </li>
+                  </ul>
+                </div>
+              ) : null}
+
+              <div className="admin-modal-footer">
+                <button type="button" className="admin-ghost-button" onClick={closeRefundModal}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
