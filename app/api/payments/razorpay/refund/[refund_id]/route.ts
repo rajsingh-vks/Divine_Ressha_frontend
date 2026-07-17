@@ -5,7 +5,7 @@ const PAYMENT_PATHS = ['/payments', '/api/payments'];
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { refund_id: string } }
+  { params }: { params: Promise<{ refund_id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const refund_id = params.refund_id;
+    const { refund_id } = await params;
     let backendResponse: Response | null = null;
     let text = '';
 
