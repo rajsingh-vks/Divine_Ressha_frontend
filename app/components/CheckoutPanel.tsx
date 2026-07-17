@@ -61,6 +61,11 @@ type OrderResponse = {
   status: string;
 };
 
+type ConfirmationResponse = {
+  success?: boolean;
+  message?: string;
+};
+
 type RazorpayOrderResponse = {
   order_id: string;
   amount: number;
@@ -72,6 +77,16 @@ type RazorpaySuccessPayload = {
   razorpay_payment_id: string;
   razorpay_order_id: string;
   razorpay_signature: string;
+};
+
+type PaymentConfirmationPayload = {
+  payment_status: 'paid';
+  payment_provider: 'razorpay';
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+  paid_at: string;
+  note: string;
 };
 
 declare global {
@@ -376,6 +391,40 @@ export default function CheckoutPanel() {
     return (await response.json()) as OrderResponse;
   };
 
+  const sendOrderConfirmation = async (orderId: string, paymentPayload: PaymentConfirmationPayload) => {
+    const endpoints = [`/api/orders/${orderId}/confirm`, `/api/orders/${orderId}/send-confirmation`];
+    let confirmed = false;
+    let notificationSent = false;
+
+    for (const endpoint of endpoints) {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getAuthHeaders() || {}),
+        },
+        body: JSON.stringify(paymentPayload),
+      });
+
+      if (response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as ConfirmationResponse;
+        if (endpoint.endsWith('/confirm')) {
+          confirmed = payload.success !== false;
+        } else {
+          notificationSent = payload.success !== false;
+        }
+        continue;
+      }
+
+      if (response.status === 404 || response.status === 405) {
+        continue;
+      }
+    }
+
+    return { confirmed, notificationSent };
+  };
+
   const resolveRazorpayKeyId = async () => {
     if (resolvedRazorpayKeyId) return resolvedRazorpayKeyId;
 
@@ -487,9 +536,19 @@ export default function CheckoutPanel() {
             }
 
             const order = await finalizeOrder();
+            const paymentPayload: PaymentConfirmationPayload = {
+              payment_status: 'paid',
+              payment_provider: 'razorpay',
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_signature: paymentResponse.razorpay_signature,
+              paid_at: new Date().toISOString(),
+              note: 'Payment verified from Razorpay checkout. Syncing paid metadata on order.',
+            };
+            const confirmationResult = await sendOrderConfirmation(order.id, paymentPayload).catch(() => ({ confirmed: false, notificationSent: false }));
             await refreshCart();
             router.push(
-              `/profile/order?placed=${encodeURIComponent(order.id)}&order=${encodeURIComponent(order.order_number)}&status=${encodeURIComponent(order.status)}`
+              `/profile/order?placed=${encodeURIComponent(order.id)}&order=${encodeURIComponent(order.order_number)}&status=${encodeURIComponent(order.status)}&confirmation=${confirmationResult.notificationSent ? 'sent' : 'failed'}&payment=${confirmationResult.confirmed ? 'paid' : 'pending'}`
             );
           } catch (err) {
             setRedirectingAfterPayment(false);

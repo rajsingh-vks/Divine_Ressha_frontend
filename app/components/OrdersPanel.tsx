@@ -67,6 +67,11 @@ type CancelModalState = {
   paymentStatus?: string | null;
 };
 
+type TrackingPreviewState = {
+  orderNumber: string;
+  data: Record<string, unknown>;
+};
+
 const readToken = () => (typeof window === 'undefined' ? '' : localStorage.getItem(AUTH_TOKEN_KEY) || '');
 const hasSession = () => typeof window !== 'undefined' && localStorage.getItem(AUTH_SESSION_KEY) === '1';
 const isAuthenticated = () => Boolean(readToken()) || hasSession();
@@ -107,11 +112,16 @@ export default function OrdersPanel() {
   const [error, setError] = useState('');
   const [actionOrderId, setActionOrderId] = useState('');
   const [returnActionOrderId, setReturnActionOrderId] = useState('');
+  const [confirmationActionOrderId, setConfirmationActionOrderId] = useState('');
+  const [invoiceActionOrderId, setInvoiceActionOrderId] = useState('');
+  const [trackActionOrderId, setTrackActionOrderId] = useState('');
   const [cancelModal, setCancelModal] = useState<CancelModalState | null>(null);
   const [cancelReasonOption, setCancelReasonOption] = useState<(typeof REFUND_REASONS)[number]>('Wrong Product');
   const [cancelCommentsInput, setCancelCommentsInput] = useState('');
   const [cancelImages, setCancelImages] = useState<File[]>([]);
   const [placedNotice, setPlacedNotice] = useState('');
+  const [actionNotice, setActionNotice] = useState('');
+  const [trackingPreview, setTrackingPreview] = useState<TrackingPreviewState | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -119,9 +129,17 @@ export default function OrdersPanel() {
     const params = new URLSearchParams(window.location.search);
     const orderNumber = params.get('order');
     const status = params.get('status');
+    const confirmation = params.get('confirmation');
+    const payment = params.get('payment');
     if (!orderNumber) return;
 
-    setPlacedNotice(`Order ${orderNumber} placed successfully${status ? ` · ${status}` : ''}.`);
+    setPlacedNotice(
+      `Order ${orderNumber} placed successfully${status ? ` · ${status}` : ''}${
+        confirmation === 'sent' ? ' · Confirmation sent.' : confirmation === 'failed' ? ' · Confirmation pending.' : ''
+      }${
+        payment === 'paid' ? ' · Payment marked paid.' : payment === 'pending' ? ' · Payment status sync pending.' : ''
+      }.`
+    );
   }, []);
 
   const loadOrders = async () => {
@@ -238,6 +256,118 @@ export default function OrdersPanel() {
     }
   };
 
+  const handleResendConfirmation = async (orderId: string, orderNumber: string) => {
+    setConfirmationActionOrderId(orderId);
+    setError('');
+    setActionNotice('');
+
+    try {
+      const endpoints = [`/api/orders/${orderId}/send-confirmation`, `/api/orders/${orderId}/confirm`];
+      let delivered = false;
+
+      for (const endpoint of endpoints) {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            ...(getAuthHeaders() || {}),
+          },
+        });
+
+        if (response.ok) {
+          delivered = true;
+          break;
+        }
+
+        if (response.status !== 404 && response.status !== 405) {
+          throw new Error(await getErrorMessage(response, 'Unable to send confirmation.'));
+        }
+      }
+
+      if (!delivered) {
+        throw new Error('Unable to send confirmation.');
+      }
+
+      setActionNotice(`Confirmation has been sent for ${orderNumber}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to send confirmation.');
+    } finally {
+      setConfirmationActionOrderId('');
+    }
+  };
+
+  const handleViewInvoice = async (orderId: string) => {
+    setInvoiceActionOrderId(orderId);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}/invoice`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          ...(getAuthHeaders() || {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, 'Unable to fetch invoice.'));
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/pdf') || contentType.includes('application/octet-stream')) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        return;
+      }
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        invoice_url?: string;
+        url?: string;
+        download_url?: string;
+        invoice?: string;
+      };
+      const invoiceUrl = payload.invoice_url || payload.url || payload.download_url || payload.invoice;
+
+      if (!invoiceUrl) {
+        throw new Error('Invoice is not available yet.');
+      }
+
+      window.open(invoiceUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to fetch invoice.');
+    } finally {
+      setInvoiceActionOrderId('');
+    }
+  };
+
+  const handleTrackOrder = async (orderId: string, orderNumber: string) => {
+    setTrackActionOrderId(orderId);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}/track`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          ...(getAuthHeaders() || {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, 'Unable to fetch tracking details.'));
+      }
+
+      const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      setTrackingPreview({ orderNumber, data: payload });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to fetch tracking details.');
+    } finally {
+      setTrackActionOrderId('');
+    }
+  };
+
   if (!ready) {
     return (
       <section className="orders-shell">
@@ -256,6 +386,7 @@ export default function OrdersPanel() {
       </div>
 
       {placedNotice ? <p className="checkout-message success">{placedNotice}</p> : null}
+      {actionNotice ? <p className="checkout-message success">{actionNotice}</p> : null}
       {error ? <p className="checkout-message error">{error}</p> : null}
 
       {loading ? <p className="checkout-muted">Refreshing orders...</p> : null}
@@ -397,6 +528,30 @@ export default function OrdersPanel() {
                 ) : null}
 
                 <div className="order-card-actions">
+                  <button
+                    type="button"
+                    className="checkout-link-button"
+                    onClick={() => handleViewInvoice(order.id)}
+                    disabled={invoiceActionOrderId === order.id}
+                  >
+                    {invoiceActionOrderId === order.id ? 'Opening…' : 'Invoice'}
+                  </button>
+                  <button
+                    type="button"
+                    className="checkout-link-button"
+                    onClick={() => handleTrackOrder(order.id, order.order_number)}
+                    disabled={trackActionOrderId === order.id}
+                  >
+                    {trackActionOrderId === order.id ? 'Loading…' : 'Track'}
+                  </button>
+                  <button
+                    type="button"
+                    className="checkout-link-button"
+                    onClick={() => handleResendConfirmation(order.id, order.order_number)}
+                    disabled={confirmationActionOrderId === order.id}
+                  >
+                    {confirmationActionOrderId === order.id ? 'Sending…' : 'Send confirmation'}
+                  </button>
                   {cancellable ? (
                     <button type="button" className="checkout-secondary-button" onClick={() => openCancelModal(order)} disabled={actionOrderId === order.id}>
                       {actionOrderId === order.id ? 'Cancelling…' : 'Cancel order'}
@@ -520,6 +675,38 @@ export default function OrdersPanel() {
                 disabled={Boolean(actionOrderId)}
               >
                 {actionOrderId ? 'Submitting…' : 'Submit Refund Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {trackingPreview ? (
+        <div className="orders-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="track-order-modal-title" onClick={() => setTrackingPreview(null)}>
+          <div className="orders-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="orders-modal-header">
+              <h2 id="track-order-modal-title">Tracking · {trackingPreview.orderNumber}</h2>
+              <button type="button" className="orders-modal-close" onClick={() => setTrackingPreview(null)} aria-label="Close">✕</button>
+            </div>
+
+            <div className="orders-modal-body">
+              {Object.keys(trackingPreview.data).length ? (
+                <ul className="order-status-history">
+                  {Object.entries(trackingPreview.data).map(([key, value]) => (
+                    <li key={key}>
+                      <strong>{prettyValue(key)}</strong>
+                      <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="checkout-muted">No tracking details available yet.</p>
+              )}
+            </div>
+
+            <div className="orders-modal-actions">
+              <button type="button" className="checkout-link-button" onClick={() => setTrackingPreview(null)}>
+                Close
               </button>
             </div>
           </div>
