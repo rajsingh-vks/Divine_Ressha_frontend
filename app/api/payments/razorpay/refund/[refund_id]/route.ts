@@ -1,34 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { BACKEND_API_URL } from '@/lib/constants/auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const PAYMENT_PATHS = ['/payments', '/api/payments'];
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { refund_id: string } }
-  
 ) {
   try {
-    const authHeader = request.headers.get('Authorization');
+    const authHeader = request.headers.get('authorization');
+    const cookieHeader = request.headers.get('cookie');
     if (!authHeader) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const refund_id = params.refund_id;
+    let backendResponse: Response | null = null;
+    let text = '';
 
-    const response = await fetch(
-      `${API_BASE_URL}/payments/razorpay/refund/${refund_id}`,
-      {
+    for (const path of PAYMENT_PATHS) {
+      const response = await fetch(
+        `${BACKEND_API_URL}${path}/razorpay/refund/${encodeURIComponent(refund_id)}`,
+        {
         method: 'GET',
         headers: {
-          Authorization: authHeader,
+            authorization: authHeader,
+            ...(cookieHeader ? { cookie: cookieHeader } : {}),
         },
-      }
-    );
+          cache: 'no-store',
+        }
+      );
 
-    const data = await response.json();
+      backendResponse = response;
+      text = await response.text();
 
-    if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
+      if (response.status !== 404 && response.status !== 405) break;
+    }
+
+    if (!backendResponse) {
+      return NextResponse.json({ detail: 'Unable to reach refund status service.' }, { status: 502 });
+    }
+
+    let data: unknown = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { message: text };
+    }
+
+    if (!backendResponse.ok) {
+      return NextResponse.json(data, { status: backendResponse.status });
     }
 
     return NextResponse.json(data, { status: 200 });
