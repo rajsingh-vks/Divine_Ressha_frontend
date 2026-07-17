@@ -107,6 +107,12 @@ export default function AdminOrdersPanel() {
   const [refundSummaryError, setRefundSummaryError] = useState('');
   const [refundSummaryOrderId, setRefundSummaryOrderId] = useState('');
   const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundModalOrder, setRefundModalOrder] = useState<Order | null>(null);
+  const [refundFormStatus, setRefundFormStatus] = useState('pending');
+  const [refundFormReason, setRefundFormReason] = useState('');
+  const [refundFormReference, setRefundFormReference] = useState('');
+  const [refundFormError, setRefundFormError] = useState('');
+  const [refundFormSuccess, setRefundFormSuccess] = useState('');
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem(ADMIN_AUTH_TOKEN_KEY);
@@ -239,89 +245,94 @@ export default function AdminOrdersPanel() {
     }
   };
 
-  const handleRefundUpdate = async (order: Order) => {
-    const currentStatus = (order.refund_status || 'pending').toLowerCase();
-    const statusInput = window.prompt('Refund status: pending | processed | rejected', currentStatus) || '';
-    const nextStatus = statusInput.trim().toLowerCase();
-
-    if (!['pending', 'processed', 'rejected'].includes(nextStatus)) {
-      if (statusInput.trim()) {
-        setFetchError('Refund status must be pending, processed, or rejected.');
-      }
-      return;
-    }
-
-    const reason = window.prompt('Refund reason (optional)', order.refund_reason || '') || '';
-    const reference = window.prompt('Refund reference (optional)', order.refund_reference || '') || '';
-
-    setUpdatingRefundOrderId(order.id);
-    setFetchError('');
+  const openRefundModal = async (order: Order) => {
+    setRefundModalOrder(order);
+    setRefundModalOpen(true);
+    setRefundFormStatus((order.refund_status || 'pending').toLowerCase());
+    setRefundFormReason(order.refund_reason || '');
+    setRefundFormReference(order.refund_reference || '');
+    setRefundFormError('');
+    setRefundFormSuccess('');
+    setRefundSummary(null);
+    setRefundSummaryLoading(true);
+    setRefundSummaryError('');
+    setRefundSummaryOrderId(order.id);
 
     try {
       const response = await fetch(`/api/orders/${order.id}/refund`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(getAuthHeaders() || {}),
-        },
-        body: JSON.stringify({
-          status: nextStatus,
-          refund_status: nextStatus,
-          reason: reason.trim() || null,
-          refund_reason: reason.trim() || null,
-          refund_reference: reference.trim() || null,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await getApiErrorMessage(response, 'Unable to update refund.'));
-      }
-
-      await fetchOrders();
-    } catch (error) {
-      setFetchError(error instanceof Error ? error.message : 'Unable to update refund.');
-    } finally {
-      setUpdatingRefundOrderId('');
-    }
-  };
-
-  const loadRefundSummary = async (orderId: string) => {
-    setRefundSummaryOrderId(orderId);
-    setRefundModalOpen(true);
-    setRefundSummaryLoading(true);
-    setRefundSummaryError('');
-    setRefundSummary(null);
-
-    try {
-      const response = await fetch(`/api/orders/${orderId}/refund`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          ...(getAuthHeaders() || {}),
-        },
+        headers: { ...(getAuthHeaders() || {}) },
         cache: 'no-store',
       });
 
-      if (!response.ok) {
-        throw new Error(await getApiErrorMessage(response, 'Unable to load refund summary.'));
-      }
+      if (!response.ok) throw new Error(await getApiErrorMessage(response, 'Unable to load refund data.'));
 
       const payload = (await response.json()) as RefundSummary;
       setRefundSummary(payload);
+      setRefundFormStatus((payload.refund_status || 'pending').toLowerCase());
+      setRefundFormReason(payload.refund_reason || '');
+      setRefundFormReference(payload.refund_reference || '');
     } catch (error) {
-      setRefundSummary(null);
-      setRefundSummaryError(error instanceof Error ? error.message : 'Unable to load refund summary.');
+      setRefundSummaryError(error instanceof Error ? error.message : 'Unable to load refund data.');
     } finally {
       setRefundSummaryLoading(false);
     }
   };
 
   const closeRefundModal = () => {
+    if (updatingRefundOrderId) return;
     setRefundModalOpen(false);
+    setRefundModalOrder(null);
     setRefundSummary(null);
     setRefundSummaryError('');
     setRefundSummaryOrderId('');
+    setRefundFormError('');
+    setRefundFormSuccess('');
+  };
+
+  const handleRefundFormSubmit = async () => {
+    if (!refundModalOrder) return;
+    if (!['pending', 'processed', 'rejected'].includes(refundFormStatus)) {
+      setRefundFormError('Status must be pending, processed, or rejected.');
+      return;
+    }
+    setUpdatingRefundOrderId(refundModalOrder.id);
+    setRefundFormError('');
+    setRefundFormSuccess('');
+
+    try {
+      const response = await fetch(`/api/orders/${refundModalOrder.id}/refund`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(getAuthHeaders() || {}) },
+        body: JSON.stringify({
+          status: refundFormStatus,
+          refund_status: refundFormStatus,
+          reason: refundFormReason.trim() || null,
+          refund_reason: refundFormReason.trim() || null,
+          refund_reference: refundFormReference.trim() || null,
+        }),
+      });
+
+      if (!response.ok) throw new Error(await getApiErrorMessage(response, 'Unable to update refund.'));
+
+      setRefundFormSuccess('Refund updated successfully.');
+      await fetchOrders();
+
+      // Reload summary after update
+      const refreshed = await fetch(`/api/orders/${refundModalOrder.id}/refund`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { ...(getAuthHeaders() || {}) },
+        cache: 'no-store',
+      });
+      if (refreshed.ok) setRefundSummary((await refreshed.json()) as RefundSummary);
+    } catch (error) {
+      setRefundFormError(error instanceof Error ? error.message : 'Unable to update refund.');
+    } finally {
+      setUpdatingRefundOrderId('');
+    }
   };
 
   if (!ready) {
@@ -444,9 +455,15 @@ export default function AdminOrdersPanel() {
                       </td>
                       <td>
                         <div className="admin-order-cell">
-                          <strong>{prettyValue(order.return_status || 'not_requested')}</strong>
-                          <small>{order.return_reason || '—'}</small>
-                          {order.return_requested_at ? <small>{formatDate(order.return_requested_at)}</small> : null}
+                          {order.status.toLowerCase() === 'cancelled' && !order.return_status ? (
+                            <strong style={{ color: '#9b9185' }}>N/A</strong>
+                          ) : (
+                            <>
+                              <strong>{prettyValue(order.return_status || 'not_requested')}</strong>
+                              <small>{order.return_reason || '—'}</small>
+                              {order.return_requested_at ? <small>{formatDate(order.return_requested_at)}</small> : null}
+                            </>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -466,10 +483,10 @@ export default function AdminOrdersPanel() {
                           <button
                             type="button"
                             className="checkout-secondary-button"
-                            onClick={() => handleRefundUpdate(order)}
-                            disabled={updatingRefundOrderId === order.id || (order.payment_status || '').toLowerCase() !== 'paid'}
+                            onClick={() => openRefundModal(order)}
+                            disabled={refundSummaryLoading && refundSummaryOrderId === order.id}
                           >
-                            {updatingRefundOrderId === order.id ? 'Updating…' : 'Update refund'}
+                            {refundSummaryLoading && refundSummaryOrderId === order.id ? 'Loading…' : 'Manage refund'}
                           </button>
                           {order.status.toLowerCase() === 'delivered' && (order.return_status || '').toLowerCase() !== 'requested' ? (
                             <button
@@ -481,14 +498,9 @@ export default function AdminOrdersPanel() {
                               {requestingReturnOrderId === order.id ? 'Requesting…' : 'Request return'}
                             </button>
                           ) : null}
-                          <button
-                            type="button"
-                            className="checkout-link-button"
-                            onClick={() => loadRefundSummary(order.id)}
-                            disabled={refundSummaryLoading && refundSummaryOrderId === order.id}
-                          >
-                            {refundSummaryLoading && refundSummaryOrderId === order.id ? 'Loading…' : 'Refund summary'}
-                          </button>
+                          {order.status.toLowerCase() === 'cancelled' && !order.return_status ? (
+                            <span style={{ fontSize: '0.8rem', color: '#9b9185' }}>Cancelled — no return</span>
+                          ) : null}
                         </div>
                       </td>
                       <td>{formatDate(order.created_at)}</td>
@@ -508,71 +520,87 @@ export default function AdminOrdersPanel() {
       </div>
 
       {refundModalOpen ? (
-        <div className="admin-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="refund-summary-title" onClick={closeRefundModal}>
-          <div className="admin-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="admin-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="refund-modal-title" onClick={closeRefundModal}>
+          <div className="admin-modal" style={{ width: 'min(100%, 640px)' }} onClick={(event) => event.stopPropagation()}>
             <div className="admin-modal-header">
-              <h2 id="refund-summary-title">Refund Summary</h2>
-              <button type="button" className="admin-modal-close" onClick={closeRefundModal} aria-label="Close">✕</button>
+              <h2 id="refund-modal-title">Manage Refund · {refundModalOrder?.order_number}</h2>
+              <button type="button" className="admin-modal-close" onClick={closeRefundModal} aria-label="Close" disabled={Boolean(updatingRefundOrderId)}>✕</button>
             </div>
 
             <div className="admin-product-form">
+              {/* Summary info */}
               {refundSummaryLoading ? <p className="checkout-muted">Loading refund data…</p> : null}
               {refundSummaryError ? <p className="admin-products-error">{refundSummaryError}</p> : null}
 
               {refundSummary ? (
-                <div className="order-status-history">
-                  <h3>{refundSummary.order_number}</h3>
-                  <ul>
-                    <li>
-                      <strong>Order / User</strong>
-                      <span>{refundSummary.order_id} · {refundSummary.user_id}</span>
-                    </li>
-                    <li>
-                      <strong>Order status</strong>
-                      <span>{prettyValue(refundSummary.order_status)}</span>
-                    </li>
-                    <li>
-                      <strong>Payment status</strong>
-                      <span>{prettyValue(refundSummary.payment_status)}</span>
-                    </li>
-                    <li>
-                      <strong>Return status</strong>
-                      <span>{prettyValue(refundSummary.return_status)}</span>
-                    </li>
-                    <li>
-                      <strong>Refund status</strong>
-                      <span>{prettyValue(refundSummary.refund_status)}</span>
-                    </li>
-                    <li>
-                      <strong>Refund amount</strong>
-                      <span>{formatCurrency(Number(refundSummary.refund_amount || 0))}</span>
-                    </li>
-                    <li>
-                      <strong>Refund reason</strong>
-                      <span>{refundSummary.refund_reason || '—'}</span>
-                    </li>
-                    <li>
-                      <strong>Refund reference</strong>
-                      <span>{refundSummary.refund_reference || '—'}</span>
-                    </li>
-                    <li>
-                      <strong>Requested at</strong>
-                      <span>{refundSummary.refund_requested_at ? formatDate(refundSummary.refund_requested_at) : '—'}</span>
-                    </li>
-                    <li>
-                      <strong>Refunded at</strong>
-                      <span>{refundSummary.refunded_at ? formatDate(refundSummary.refunded_at) : '—'}</span>
-                    </li>
-                    <li>
-                      <strong>Last updated</strong>
-                      <span>{refundSummary.updated_at ? formatDate(refundSummary.updated_at) : '—'}</span>
-                    </li>
+                <div className="order-status-history" style={{ marginBottom: '0.5rem' }}>
+                  <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7a7469', marginBottom: '0.5rem' }}>Current refund data</h3>
+                  <ul style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+                    <li><strong>Order status</strong><span>{prettyValue(refundSummary.order_status)}</span></li>
+                    <li><strong>Payment status</strong><span>{prettyValue(refundSummary.payment_status)}</span></li>
+                    <li><strong>Return status</strong><span>{prettyValue(refundSummary.return_status)}</span></li>
+                    <li><strong>Refund status</strong><span>{prettyValue(refundSummary.refund_status)}</span></li>
+                    <li><strong>Refund amount</strong><span>{formatCurrency(Number(refundSummary.refund_amount || 0))}</span></li>
+                    <li><strong>Reference</strong><span>{refundSummary.refund_reference || '—'}</span></li>
+                    <li><strong>Requested at</strong><span>{refundSummary.refund_requested_at ? formatDate(refundSummary.refund_requested_at) : '—'}</span></li>
+                    <li><strong>Refunded at</strong><span>{refundSummary.refunded_at ? formatDate(refundSummary.refunded_at) : '—'}</span></li>
                   </ul>
                 </div>
               ) : null}
 
+              {/* Update form */}
+              {!refundSummaryLoading ? (
+                <div className="admin-form-grid">
+                  <label className="admin-form-field">
+                    <span>Refund status</span>
+                    <select
+                      value={refundFormStatus}
+                      onChange={(e) => setRefundFormStatus(e.target.value)}
+                      disabled={Boolean(updatingRefundOrderId)}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="processed">Processed</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </label>
+
+                  <label className="admin-form-field">
+                    <span>Refund reference</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. TXN123456 or NEFT ref"
+                      value={refundFormReference}
+                      onChange={(e) => setRefundFormReference(e.target.value)}
+                      disabled={Boolean(updatingRefundOrderId)}
+                    />
+                  </label>
+
+                  <label className="admin-form-field admin-form-full">
+                    <span>Refund reason</span>
+                    <input
+                      type="text"
+                      placeholder="Reason for this refund decision"
+                      value={refundFormReason}
+                      onChange={(e) => setRefundFormReason(e.target.value)}
+                      disabled={Boolean(updatingRefundOrderId)}
+                    />
+                  </label>
+                </div>
+              ) : null}
+
+              {refundFormError ? <p className="admin-products-error" style={{ margin: 0 }}>{refundFormError}</p> : null}
+              {refundFormSuccess ? <p style={{ margin: 0, color: '#047857', fontSize: '0.9rem' }}>{refundFormSuccess}</p> : null}
+
               <div className="admin-modal-footer">
-                <button type="button" className="admin-ghost-button" onClick={closeRefundModal}>Close</button>
+                <button type="button" className="admin-ghost-button" onClick={closeRefundModal} disabled={Boolean(updatingRefundOrderId)}>Close</button>
+                <button
+                  type="button"
+                  className="admin-primary-button"
+                  onClick={handleRefundFormSubmit}
+                  disabled={Boolean(updatingRefundOrderId) || refundSummaryLoading}
+                >
+                  {updatingRefundOrderId ? 'Saving…' : 'Save refund'}
+                </button>
               </div>
             </div>
           </div>
