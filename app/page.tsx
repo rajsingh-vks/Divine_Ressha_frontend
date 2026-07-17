@@ -18,6 +18,7 @@ export default async function HomePage() {
     <>
       <Header />
 
+
       <main>
         <Hero />
         <RitualShowcase />
