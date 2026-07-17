@@ -4,6 +4,8 @@ export const AUTH_ENDPOINTS = {
   login: '/auth/login',
   signup: '/auth/signup',
   profile: '/auth/profile',
+  verifyEmail: '/auth/verify-email',
+  resendVerification: '/auth/resend-verification',
 } as const;
 
 export const AUTH_TOKEN_KEY = 'divine_ressha_auth_token';

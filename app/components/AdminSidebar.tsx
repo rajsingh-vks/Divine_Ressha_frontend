@@ -18,6 +18,7 @@ export default function AdminSidebar({
     { label: 'Overview', href: '/admin/dashboard' },
     { label: 'Products', href: '/admin/products' },
     { label: 'Orders', href: '/admin/orders' },
+    { label: 'Users', href: '/admin/users' },
     { label: 'Tracking', href: '/admin/tracking' },
   ];
 
