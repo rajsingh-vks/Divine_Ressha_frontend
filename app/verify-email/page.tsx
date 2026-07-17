@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VerifyEmailPanel from '../components/VerifyEmailPanel';
@@ -12,7 +13,9 @@ export default function VerifyEmailPage() {
     <>
       <Header />
       <main>
-        <VerifyEmailPanel />
+        <Suspense fallback={null}>
+          <VerifyEmailPanel />
+        </Suspense>
       </main>
       <Footer />
     </>
