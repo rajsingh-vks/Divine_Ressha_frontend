@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Script from 'next/script';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY } from '@/lib/constants/auth';
@@ -60,6 +61,47 @@ type OrderResponse = {
   status: string;
 };
 
+type RazorpayOrderResponse = {
+  order_id: string;
+  amount: number;
+  currency: string;
+  receipt?: string;
+};
+
+type RazorpaySuccessPayload = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: {
+      key: string;
+      amount: number;
+      currency: string;
+      name: string;
+      description?: string;
+      order_id: string;
+      prefill?: {
+        name?: string;
+        contact?: string;
+      };
+      notes?: Record<string, string>;
+      theme?: {
+        color?: string;
+      };
+      modal?: {
+        ondismiss?: () => void;
+      };
+      handler: (response: RazorpaySuccessPayload) => void | Promise<void>;
+    }) => {
+      open: () => void;
+      on: (eventName: 'payment.failed', callback: (response: { error?: { description?: string } }) => void) => void;
+    };
+  }
+}
+
 const EMPTY_ADDRESS_FORM: AddressFormState = {
   full_name: '',
   phone: '',
@@ -108,6 +150,8 @@ const buildAddressLabel = (address: Address) =>
     .filter(Boolean)
     .join(', ');
 
+const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
+
 export default function CheckoutPanel() {
   const router = useRouter();
   const { cartItems, refreshCart } = useShopActions();
@@ -125,6 +169,7 @@ export default function CheckoutPanel() {
   const [deletingId, setDeletingId] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [redirectingAfterPayment, setRedirectingAfterPayment] = useState(false);
 
   const rows = useMemo(
     () =>
@@ -309,41 +354,143 @@ export default function CheckoutPanel() {
     }
   };
 
+  const finalizeOrder = async () => {
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getAuthHeaders() || {}),
+      },
+      body: JSON.stringify({
+        address_id: selectedAddressId,
+        notes: notes.trim() || null,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await getApiErrorMessage(response, 'Unable to place order.'));
+    }
+
+    return (await response.json()) as OrderResponse;
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedAddressId) {
       setError('Please select or add a delivery address.');
       return;
     }
 
+    if (!razorpayKeyId) {
+      setError('Razorpay key is missing. Add NEXT_PUBLIC_RAZORPAY_KEY_ID to the environment.');
+      return;
+    }
+
+    if (!window.Razorpay) {
+      setError('Payment gateway is still loading. Please try again in a moment.');
+      return;
+    }
+
+    const amountInPaise = Math.round(subtotal * 100);
+    if (!Number.isFinite(amountInPaise) || amountInPaise < 100) {
+      setError('Order amount must be at least ₹1.');
+      return;
+    }
+
     setPlacingOrder(true);
+    setRedirectingAfterPayment(false);
     setError('');
     setSuccess('');
 
     try {
-      const response = await fetch('/api/orders', {
+      const response = await fetch('/api/create-order', {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(getAuthHeaders() || {}),
         },
         body: JSON.stringify({
-          address_id: selectedAddressId,
-          notes: notes.trim() || null,
+          amount: amountInPaise,
+          currency: 'INR',
+          receipt: `divine_ressha_${Date.now()}`,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(await getApiErrorMessage(response, 'Unable to place order.'));
+        throw new Error(await getApiErrorMessage(response, 'Unable to create Razorpay order.'));
       }
 
-      const order = (await response.json()) as OrderResponse;
-      await refreshCart();
-      router.push(`/orders?placed=${encodeURIComponent(order.id)}&order=${encodeURIComponent(order.order_number)}&status=${encodeURIComponent(order.status)}`);
+      const razorpayOrder = (await response.json()) as RazorpayOrderResponse;
+      let paymentSettled = false;
+
+      const razorpay = new window.Razorpay({
+        key: razorpayKeyId,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: 'Divine Ressha',
+        description: 'Secure checkout payment',
+        order_id: razorpayOrder.order_id,
+        prefill: {
+          name: selectedAddress?.full_name || '',
+          contact: selectedAddress?.phone || '',
+        },
+        notes: {
+          address_id: selectedAddressId,
+          order_note: notes.trim() || '',
+        },
+        theme: {
+          color: '#2874f0',
+        },
+        modal: {
+          ondismiss: () => {
+            if (paymentSettled) return;
+            setPlacingOrder(false);
+            setRedirectingAfterPayment(false);
+            setError('Payment was cancelled before completion.');
+          },
+        },
+        handler: async (paymentResponse) => {
+          paymentSettled = true;
+          setRedirectingAfterPayment(true);
+
+          try {
+            const verifyResponse = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(paymentResponse),
+            });
+
+            if (!verifyResponse.ok) {
+              throw new Error(await getApiErrorMessage(verifyResponse, 'Unable to verify payment.'));
+            }
+
+            const order = await finalizeOrder();
+            await refreshCart();
+            router.push(
+              `/profile/order?placed=${encodeURIComponent(order.id)}&order=${encodeURIComponent(order.order_number)}&status=${encodeURIComponent(order.status)}`
+            );
+          } catch (err) {
+            setRedirectingAfterPayment(false);
+            setError(err instanceof Error ? err.message : 'Payment succeeded but order placement failed.');
+          } finally {
+            setPlacingOrder(false);
+          }
+        },
+      });
+
+      razorpay.on('payment.failed', (paymentFailure) => {
+        paymentSettled = true;
+        setPlacingOrder(false);
+        setRedirectingAfterPayment(false);
+        setError(paymentFailure.error?.description || 'Payment failed. Please try again.');
+      });
+
+      razorpay.open();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to place order.');
-    } finally {
       setPlacingOrder(false);
+      setRedirectingAfterPayment(false);
+      setError(err instanceof Error ? err.message : 'Unable to start payment.');
     }
   };
 
@@ -368,8 +515,16 @@ export default function CheckoutPanel() {
   }
 
   return (
-    <section className="checkout-shell">
-      <div className="checkout-layout">
+    <>
+      <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
+      {redirectingAfterPayment ? (
+        <div className="checkout-payment-loader" role="status" aria-live="polite" aria-label="Payment successful, redirecting to order page">
+          <div className="checkout-payment-loader__spinner" />
+          <p>Payment successful. Redirecting to your order page...</p>
+        </div>
+      ) : null}
+      <section className="checkout-shell">
+        <div className="checkout-layout">
         <div className="checkout-main-card">
           <div className="checkout-heading">
             <div>
@@ -555,10 +710,11 @@ export default function CheckoutPanel() {
           </div>
 
           <button type="button" className="checkout-primary-button checkout-place-button" onClick={handlePlaceOrder} disabled={placingOrder || !selectedAddressId || !rows.length}>
-            {placingOrder ? 'Placing order…' : 'Place order'}
+            {placingOrder ? 'Processing payment…' : 'Pay & place order'}
           </button>
         </aside>
-      </div>
-    </section>
+        </div>
+      </section>
+    </>
   );
 }
