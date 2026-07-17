@@ -45,6 +45,7 @@ export default function AdminUsersPanel() {
   const [fetchError, setFetchError] = useState('');
   const [search, setSearch] = useState('');
   const [deletingUserId, setDeletingUserId] = useState('');
+  const [deletingHard, setDeletingHard] = useState(false);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem(ADMIN_AUTH_TOKEN_KEY);
@@ -122,15 +123,22 @@ export default function AdminUsersPanel() {
     router.replace('/admin/login');
   };
 
-  const handleDeleteUser = async (user: User) => {
+  const handleDeleteUser = async (user: User, hard: boolean) => {
     const name = user.full_name || user.email;
-    if (!window.confirm(`Delete user ${name}? This action cannot be undone.`)) return;
+    const actionLabel = hard ? 'permanently delete' : 'soft delete';
+    if (!window.confirm(`Are you sure you want to ${actionLabel} user ${name}?${hard ? ' This removes the account from the database.' : ''}`)) return;
+
+    if (hard && adminUser?.id && adminUser.id === user.id) {
+      setFetchError('You cannot hard-delete your own admin account.');
+      return;
+    }
 
     setDeletingUserId(user.id);
+    setDeletingHard(hard);
     setFetchError('');
 
     try {
-      const response = await fetch(`/api/users/${encodeURIComponent(user.id)}`, {
+      const response = await fetch(`/api/users/${encodeURIComponent(user.id)}${hard ? '?hard=true' : ''}`, {
         method: 'DELETE',
         credentials: 'include',
         headers: getAuthHeaders(),
@@ -146,6 +154,7 @@ export default function AdminUsersPanel() {
       setFetchError(error instanceof Error ? error.message : 'Unable to delete user.');
     } finally {
       setDeletingUserId('');
+      setDeletingHard(false);
     }
   };
 
@@ -241,11 +250,20 @@ export default function AdminUsersPanel() {
                         <div className="admin-row-actions">
                           <button
                             type="button"
-                            className="admin-row-button danger"
-                            onClick={() => void handleDeleteUser(user)}
+                            className="admin-row-button"
+                            onClick={() => void handleDeleteUser(user, false)}
                             disabled={deletingUserId === user.id}
                           >
-                            {deletingUserId === user.id ? 'Deleting…' : 'Delete'}
+                            {deletingUserId === user.id && !deletingHard ? 'Deleting…' : 'Soft delete'}
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-row-button danger"
+                            onClick={() => void handleDeleteUser(user, true)}
+                            disabled={deletingUserId === user.id || (adminUser?.id ? adminUser.id === user.id : false)}
+                            title={adminUser?.id === user.id ? 'You cannot hard-delete your own account' : 'Permanently remove from database'}
+                          >
+                            {deletingUserId === user.id && deletingHard ? 'Deleting…' : 'Hard delete'}
                           </button>
                         </div>
                       </td>
