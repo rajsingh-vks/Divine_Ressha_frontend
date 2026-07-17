@@ -26,8 +26,8 @@ export default function Header() {
 
       if (user) {
         try {
-          const parsed = JSON.parse(user) as { name?: string; email?: string };
-          setProfileName(parsed.name || parsed.email || 'Profile');
+          const parsed = JSON.parse(user) as { name?: string; full_name?: string; email?: string };
+          setProfileName(parsed.name || parsed.full_name || parsed.email || 'Profile');
         } catch {
           setProfileName('Profile');
         }

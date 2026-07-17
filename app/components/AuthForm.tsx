@@ -30,6 +30,13 @@ type AuthResponse = {
   name?: string;
 };
 
+type AuthUser = {
+  name?: string;
+  full_name?: string;
+  email?: string;
+  email_verified?: boolean;
+};
+
 const initialState = {
   name: '',
   email: '',
@@ -43,6 +50,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   const isSignup = mode === 'signup';
 
@@ -88,7 +97,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: form.name,
+          full_name: form.name.trim() || undefined,
           email: form.email,
           password: form.password,
         }),
@@ -101,20 +110,33 @@ export default function AuthForm({ mode }: AuthFormProps) {
       }
 
       const token = data.access_token || data.accessToken || data.auth_token || data.token || data.tokens?.access_token;
+      const apiUser = typeof data.user === 'object' && data.user ? (data.user as AuthUser) : null;
       const userPayload = {
-        name:
-          data.name ||
-          form.name ||
-          (typeof data.user === 'object' && data.user
-            ? ((data.user as { name?: string; full_name?: string }).name || (data.user as { full_name?: string }).full_name)
-            : ''),
-        email: data.email || form.email || (typeof data.user === 'object' && data.user ? (data.user as { email?: string }).email : ''),
+        name: data.name || apiUser?.full_name || apiUser?.name || form.name || '',
+        email: data.email || apiUser?.email || form.email,
       };
+
+      setVerificationEmail(userPayload.email || form.email);
+
+      if (!token && !isSignup) {
+        throw new Error(data.detail || data.message || 'Login succeeded without an access token.');
+      }
+
+      if (!token && isSignup) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(AUTH_SESSION_KEY);
+        localStorage.removeItem(AUTH_USER_KEY);
+        setSuccess(data.message || 'Account created. Please verify your email to continue.');
+        setForm((current) => ({
+          ...current,
+          password: '',
+          confirmPassword: '',
+        }));
+        return;
+      }
 
       if (token) {
         localStorage.setItem(AUTH_TOKEN_KEY, token);
-      } else {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
       }
 
       localStorage.setItem(AUTH_SESSION_KEY, '1');
@@ -130,6 +152,40 @@ export default function AuthForm({ mode }: AuthFormProps) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const email = verificationEmail || form.email;
+    if (!email) {
+      setError('Enter your email to resend verification.');
+      return;
+    }
+
+    setResendingVerification(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = (await response.json()) as { detail?: string; message?: string };
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || 'Unable to resend verification email.');
+      }
+
+      setSuccess(data.message || 'Verification email sent. Please check your inbox.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to resend verification email.');
+    } finally {
+      setResendingVerification(false);
     }
   };
 
@@ -197,6 +253,17 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
           {error && <p className="auth-message auth-message-error">{error}</p>}
           {success && <p className="auth-message auth-message-success">{success}</p>}
+
+          {isSignup && verificationEmail ? (
+            <>
+              <button className="auth-submit" type="button" onClick={handleResendVerification} disabled={resendingVerification || loading}>
+                {resendingVerification ? 'SENDING…' : 'RESEND VERIFICATION EMAIL'}
+              </button>
+              <p className="auth-message">
+                Already have a verification token? <Link href="/verify-email">Verify email</Link>
+              </p>
+            </>
+          ) : null}
 
           <button className="auth-submit" type="submit" disabled={loading}>
             {loading ? 'PLEASE WAIT…' : isSignup ? 'CREATE ACCOUNT' : 'SIGN IN'}
