@@ -436,11 +436,15 @@ export default function OrdersPanel() {
                   </div>
                   <div>
                     <span>Return</span>
-                    <strong>{prettyValue(order.return_status || 'not_requested')}</strong>
+                    <strong>
+                      {order.status.toLowerCase() === 'cancelled' && !order.return_status
+                        ? 'N/A'
+                        : prettyValue(order.return_status || 'not requested')}
+                    </strong>
                   </div>
                   <div>
                     <span>Refund</span>
-                    <strong>{prettyValue(order.refund_status || 'not_required')}</strong>
+                    <strong>{prettyValue(order.refund_status || 'not required')}</strong>
                   </div>
                 </div>
 
@@ -466,7 +470,7 @@ export default function OrdersPanel() {
                 {order.notes ? <p className="order-note">Note: {order.notes}</p> : null}
                 {cancellationReason ? <p className="order-note cancel">Cancel reason: {cancellationReason}</p> : null}
 
-                {(order.return_status || order.return_reason || order.return_requested_at) ? (
+                {(order.return_status || order.return_reason || order.return_requested_at) && order.status.toLowerCase() !== 'cancelled' ? (
                   <div className="order-status-history">
                     <h3>Return details</h3>
                     <ul>
@@ -557,7 +561,7 @@ export default function OrdersPanel() {
                       {actionOrderId === order.id ? 'Cancelling…' : 'Cancel order'}
                     </button>
                   ) : null}
-                  {returnable ? (
+                  {returnable && order.status.toLowerCase() !== 'cancelled' ? (
                     <button
                       type="button"
                       className="checkout-link-button"
