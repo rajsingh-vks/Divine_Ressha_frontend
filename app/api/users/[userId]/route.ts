@@ -4,6 +4,9 @@ import { BACKEND_API_URL } from '@/lib/constants/auth';
 const USER_PATHS = ['/users', '/api/users'];
 
 async function proxy(request: Request, userId: string) {
+  const reqUrl = new URL(request.url);
+  const query = reqUrl.search;
+
   const headers = new Headers();
   const authHeader = request.headers.get('authorization');
   const cookieHeader = request.headers.get('cookie');
@@ -14,7 +17,7 @@ async function proxy(request: Request, userId: string) {
   let text = '';
 
   for (const path of USER_PATHS) {
-    const response = await fetch(`${BACKEND_API_URL}${path}/${encodeURIComponent(userId)}`, {
+    const response = await fetch(`${BACKEND_API_URL}${path}/${encodeURIComponent(userId)}${query}`, {
       method: request.method,
       headers,
       cache: 'no-store',
