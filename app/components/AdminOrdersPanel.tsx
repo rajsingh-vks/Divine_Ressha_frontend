@@ -109,10 +109,12 @@ export default function AdminOrdersPanel() {
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [refundModalOrder, setRefundModalOrder] = useState<Order | null>(null);
   const [refundFormStatus, setRefundFormStatus] = useState('pending');
+  const [refundFormAmount, setRefundFormAmount] = useState('');
   const [refundFormReason, setRefundFormReason] = useState('');
   const [refundFormReference, setRefundFormReference] = useState('');
   const [refundFormError, setRefundFormError] = useState('');
   const [refundFormSuccess, setRefundFormSuccess] = useState('');
+  const [processingRazorpayRefund, setProcessingRazorpayRefund] = useState(false);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem(ADMIN_AUTH_TOKEN_KEY);
@@ -249,6 +251,7 @@ export default function AdminOrdersPanel() {
     setRefundModalOrder(order);
     setRefundModalOpen(true);
     setRefundFormStatus((order.refund_status || 'pending').toLowerCase());
+    setRefundFormAmount(order.refund_amount ? String(order.refund_amount) : '');
     setRefundFormReason(order.refund_reason || '');
     setRefundFormReference(order.refund_reference || '');
     setRefundFormError('');
@@ -271,6 +274,7 @@ export default function AdminOrdersPanel() {
       const payload = (await response.json()) as RefundSummary;
       setRefundSummary(payload);
       setRefundFormStatus((payload.refund_status || 'pending').toLowerCase());
+      setRefundFormAmount(payload.refund_amount ? String(payload.refund_amount) : '');
       setRefundFormReason(payload.refund_reason || '');
       setRefundFormReference(payload.refund_reference || '');
     } catch (error) {
@@ -302,6 +306,36 @@ export default function AdminOrdersPanel() {
     setRefundFormSuccess('');
 
     try {
+      // If processing status is selected and amount is provided, process Razorpay refund
+      if (refundFormStatus === 'processed' && refundFormAmount.trim()) {
+        setProcessingRazorpayRefund(true);
+        const refundAmountNumber = parseFloat(refundFormAmount);
+        if (isNaN(refundAmountNumber) || refundAmountNumber <= 0) {
+          throw new Error('Refund amount must be a valid positive number.');
+        }
+
+        // Call Razorpay refund endpoint
+        const razorpayResponse = await fetch('/api/payments/razorpay/refund', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', ...(getAuthHeaders() || {}) },
+          body: JSON.stringify({
+            order_id: refundModalOrder.id,
+            amount: refundAmountNumber * 100, // Convert to paise
+            reason: refundFormReason.trim() || null,
+          }),
+        });
+
+        if (!razorpayResponse.ok) {
+          throw new Error(await getApiErrorMessage(razorpayResponse, 'Unable to process Razorpay refund.'));
+        }
+
+        const razorpayResult = (await razorpayResponse.json()) as { refund_id?: string; status?: string };
+        setRefundFormReference(razorpayResult.refund_id || refundFormReference);
+        setProcessingRazorpayRefund(false);
+      }
+
+      // Update refund metadata in order
       const response = await fetch(`/api/orders/${refundModalOrder.id}/refund`, {
         method: 'PATCH',
         credentials: 'include',
@@ -309,6 +343,8 @@ export default function AdminOrdersPanel() {
         body: JSON.stringify({
           status: refundFormStatus,
           refund_status: refundFormStatus,
+          amount: refundFormAmount.trim() ? parseFloat(refundFormAmount) : null,
+          refund_amount: refundFormAmount.trim() ? parseFloat(refundFormAmount) : null,
           reason: refundFormReason.trim() || null,
           refund_reason: refundFormReason.trim() || null,
           refund_reference: refundFormReference.trim() || null,
@@ -317,7 +353,7 @@ export default function AdminOrdersPanel() {
 
       if (!response.ok) throw new Error(await getApiErrorMessage(response, 'Unable to update refund.'));
 
-      setRefundFormSuccess('Refund updated successfully.');
+      setRefundFormSuccess('Refund processed successfully.');
       await fetchOrders();
 
       // Reload summary after update
@@ -329,7 +365,8 @@ export default function AdminOrdersPanel() {
       });
       if (refreshed.ok) setRefundSummary((await refreshed.json()) as RefundSummary);
     } catch (error) {
-      setRefundFormError(error instanceof Error ? error.message : 'Unable to update refund.');
+      setRefundFormError(error instanceof Error ? error.message : 'Unable to process refund.');
+      setProcessingRazorpayRefund(false);
     } finally {
       setUpdatingRefundOrderId('');
     }
@@ -556,12 +593,25 @@ export default function AdminOrdersPanel() {
                     <select
                       value={refundFormStatus}
                       onChange={(e) => setRefundFormStatus(e.target.value)}
-                      disabled={Boolean(updatingRefundOrderId)}
+                      disabled={Boolean(updatingRefundOrderId) || processingRazorpayRefund}
                     >
                       <option value="pending">Pending</option>
                       <option value="processed">Processed</option>
                       <option value="rejected">Rejected</option>
                     </select>
+                  </label>
+
+                  <label className="admin-form-field">
+                    <span>Refund amount (₹)</span>
+                    <input
+                      type="number"
+                      placeholder="Amount to refund"
+                      step="0.01"
+                      min="0"
+                      value={refundFormAmount}
+                      onChange={(e) => setRefundFormAmount(e.target.value)}
+                      disabled={Boolean(updatingRefundOrderId) || processingRazorpayRefund}
+                    />
                   </label>
 
                   <label className="admin-form-field">
@@ -571,7 +621,7 @@ export default function AdminOrdersPanel() {
                       placeholder="e.g. TXN123456 or NEFT ref"
                       value={refundFormReference}
                       onChange={(e) => setRefundFormReference(e.target.value)}
-                      disabled={Boolean(updatingRefundOrderId)}
+                      disabled={Boolean(updatingRefundOrderId) || processingRazorpayRefund}
                     />
                   </label>
 
@@ -582,7 +632,7 @@ export default function AdminOrdersPanel() {
                       placeholder="Reason for this refund decision"
                       value={refundFormReason}
                       onChange={(e) => setRefundFormReason(e.target.value)}
-                      disabled={Boolean(updatingRefundOrderId)}
+                      disabled={Boolean(updatingRefundOrderId) || processingRazorpayRefund}
                     />
                   </label>
                 </div>
@@ -592,14 +642,14 @@ export default function AdminOrdersPanel() {
               {refundFormSuccess ? <p style={{ margin: 0, color: '#047857', fontSize: '0.9rem' }}>{refundFormSuccess}</p> : null}
 
               <div className="admin-modal-footer">
-                <button type="button" className="admin-ghost-button" onClick={closeRefundModal} disabled={Boolean(updatingRefundOrderId)}>Close</button>
+                <button type="button" className="admin-ghost-button" onClick={closeRefundModal} disabled={Boolean(updatingRefundOrderId) || processingRazorpayRefund}>Close</button>
                 <button
                   type="button"
                   className="admin-primary-button"
                   onClick={handleRefundFormSubmit}
-                  disabled={Boolean(updatingRefundOrderId) || refundSummaryLoading}
+                  disabled={Boolean(updatingRefundOrderId) || refundSummaryLoading || processingRazorpayRefund}
                 >
-                  {updatingRefundOrderId ? 'Saving…' : 'Save refund'}
+                  {processingRazorpayRefund ? 'Processing Razorpay…' : updatingRefundOrderId ? 'Saving…' : 'Save refund'}
                 </button>
               </div>
             </div>
