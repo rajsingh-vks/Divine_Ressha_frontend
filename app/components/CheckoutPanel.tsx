@@ -150,7 +150,7 @@ const buildAddressLabel = (address: Address) =>
     .filter(Boolean)
     .join(', ');
 
-const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
+const initialRazorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
 
 export default function CheckoutPanel() {
   const router = useRouter();
@@ -170,6 +170,7 @@ export default function CheckoutPanel() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [redirectingAfterPayment, setRedirectingAfterPayment] = useState(false);
+  const [resolvedRazorpayKeyId, setResolvedRazorpayKeyId] = useState(initialRazorpayKeyId);
 
   const rows = useMemo(
     () =>
@@ -375,14 +376,32 @@ export default function CheckoutPanel() {
     return (await response.json()) as OrderResponse;
   };
 
+  const resolveRazorpayKeyId = async () => {
+    if (resolvedRazorpayKeyId) return resolvedRazorpayKeyId;
+
+    const response = await fetch('/api/razorpay-key', {
+      method: 'GET',
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      throw new Error(await getApiErrorMessage(response, 'Razorpay key is missing on server environment.'));
+    }
+
+    const payload = (await response.json()) as { key_id?: string };
+    const keyId = payload.key_id?.trim() || '';
+
+    if (!keyId) {
+      throw new Error('Razorpay key is missing on server environment.');
+    }
+
+    setResolvedRazorpayKeyId(keyId);
+    return keyId;
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedAddressId) {
       setError('Please select or add a delivery address.');
-      return;
-    }
-
-    if (!razorpayKeyId) {
-      setError('Razorpay key is missing. Add NEXT_PUBLIC_RAZORPAY_KEY_ID to the environment.');
       return;
     }
 
@@ -403,6 +422,8 @@ export default function CheckoutPanel() {
     setSuccess('');
 
     try {
+      const razorpayKeyId = await resolveRazorpayKeyId();
+
       const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: {
