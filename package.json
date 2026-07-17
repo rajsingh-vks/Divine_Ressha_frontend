@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "next": "latest",
+    "razorpay": "^2.9.8",
     "react": "latest",
     "react-dom": "latest"
   },

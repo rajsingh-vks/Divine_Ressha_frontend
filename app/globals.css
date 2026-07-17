@@ -366,6 +366,39 @@ img {
   color: #047857;
 }
 
+.checkout-payment-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(18, 18, 18, 0.5);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 1rem;
+}
+
+.checkout-payment-loader p {
+  margin: 0.9rem 0 0;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.checkout-payment-loader__spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  animation: checkout-spin 0.9s linear infinite;
+}
+
+@keyframes checkout-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .checkout-muted {
   margin: 0;
   color: #6b6258;
