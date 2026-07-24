@@ -1,8 +1,13 @@
-export const BACKEND_API_URL = process.env.BACKEND_API_URL ?? 'http://13.126.80.31';
+export const BACKEND_API_URL =
+  process.env.BACKEND_API_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:8001' : 'http://13.126.80.31');
 
 export const AUTH_ENDPOINTS = {
   login: '/auth/login',
   signup: '/auth/signup',
+  signupInitiate: '/auth/signup/initiate',
+  signupComplete: '/auth/signup/complete',
   profile: '/auth/profile',
   verifyEmail: '/auth/verify-email',
   resendVerification: '/auth/resend-verification',

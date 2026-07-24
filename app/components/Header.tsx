@@ -60,13 +60,13 @@ export default function Header() {
   return (
     <header className="site-header">
       {/* Desktop Navigation */}
-      <nav className="site-nav desktop-nav">
+      {/* <nav className="site-nav desktop-nav">
         {navigationLinks.map((link) => (
           <a key={link.href} href={link.href}>
             {link.label}
           </a>
         ))}
-      </nav>
+      </nav> */}
 
       <div className="brand">
         <Link href="/">
@@ -155,13 +155,13 @@ export default function Header() {
         )}
 
         {/* Hamburger */}
-        <button
+        {/* <button
           className="menu-btn"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menu"
         >
           ☰
-        </button>
+        </button> */}
       </div>
 
       {/* Mobile Navigation */}

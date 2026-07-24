@@ -24,10 +24,21 @@ type AuthResponse = {
     expires_in?: number;
   } | null;
   message?: string;
-  detail?: string;
+  detail?: string | Array<{ msg?: string }>;
   user?: unknown;
   email?: string;
   name?: string;
+  phone?: string;
+  mobile_verification_code?: string | null;
+  email_verification_code?: string | null;
+  verification_id?: string;
+  signup_verification_id?: string;
+  id?: string;
+};
+
+const getAuthErrorMessage = (data: AuthResponse, fallback: string) => {
+  if (Array.isArray(data.detail)) return data.detail[0]?.msg || fallback;
+  return data.detail || data.message || fallback;
 };
 
 type AuthUser = {
@@ -40,8 +51,10 @@ type AuthUser = {
 const initialState = {
   name: '',
   email: '',
+  phone: '',
   password: '',
   confirmPassword: '',
+  emailCode: '',
 };
 
 export default function AuthForm({ mode }: AuthFormProps) {
@@ -51,7 +64,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [verificationEmail, setVerificationEmail] = useState('');
+  const [signupVerificationId, setSignupVerificationId] = useState('');
+  const [serverEmailCode, setServerEmailCode] = useState('');
+  const [serverMobileCode, setServerMobileCode] = useState('');
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [signupStep, setSignupStep] = useState<'details' | 'verify'>('details');
 
   const isSignup = mode === 'signup';
 
@@ -68,9 +85,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const subtitle = useMemo(
     () =>
       isSignup
-        ? 'Create your Divine Ressha account to save your ritual and continue to checkout.'
+        ? signupStep === 'details'
+          ? 'Create your Divine Ressha account. We will send a verification code to your email.'
+          : 'Enter the email verification code to complete your account setup.'
         : 'Sign in to continue your botanical ritual and access your account.',
-    [isSignup]
+    [isSignup, signupStep]
   );
 
   const handleChange = (field: keyof typeof initialState) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,31 +101,89 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setError('');
     setSuccess('');
 
-    if (isSignup && form.password !== form.confirmPassword) {
+    if (isSignup && signupStep === 'details' && form.password !== form.confirmPassword) {
       setError('Passwords do not match.');
+      return;
+    }
+
+    if (isSignup && signupStep === 'details' && !form.phone.trim()) {
+      setError('Mobile number is required.');
+      return;
+    }
+
+    if (isSignup && signupStep === 'verify' && !form.emailCode.trim()) {
+      setError('Email verification code is required.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/auth/${mode}`, {
+      const endpoint = isSignup
+        ? signupStep === 'details'
+          ? '/api/auth/signup/initiate'
+          : '/api/auth/signup/complete'
+        : `/api/auth/${mode}`;
+
+      const bodyPayload = isSignup
+        ? signupStep === 'details'
+          ? {
+              full_name: form.name.trim() || undefined,
+              email: form.email.trim(),
+              phone: form.phone.trim(),
+              password: form.password,
+            }
+          : {
+              full_name: form.name.trim() || undefined,
+              email: form.email.trim(),
+              phone: form.phone.trim(),
+              password: form.password,
+              email_code: form.emailCode.trim(),
+              mobile_code: (serverMobileCode || form.emailCode).trim(),
+              ...(signupVerificationId ? { verification_id: signupVerificationId } : {}),
+            }
+        : {
+            email: form.email.trim(),
+            password: form.password,
+          };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          full_name: form.name.trim() || undefined,
-          email: form.email,
-          password: form.password,
-        }),
+        body: JSON.stringify(bodyPayload),
       });
 
       const data = (await response.json()) as AuthResponse;
 
       if (!response.ok) {
-        throw new Error(data.detail || data.message || 'Authentication failed.');
+        throw new Error(getAuthErrorMessage(data, 'Authentication failed.'));
+      }
+
+      if (isSignup && signupStep === 'details') {
+        setSignupStep('verify');
+        setVerificationEmail(form.email.trim());
+        const fallbackEmailCode = (data.email_verification_code || '').trim();
+        setServerEmailCode(fallbackEmailCode);
+        if (fallbackEmailCode) {
+          setForm((current) => ({
+            ...current,
+            emailCode: fallbackEmailCode,
+          }));
+        }
+        setServerMobileCode((data.mobile_verification_code || '').trim());
+        setSignupVerificationId(
+          String(
+            data.verification_id ||
+              data.signup_verification_id ||
+              data.id ||
+              ''
+          )
+        );
+        setSuccess(data.message || 'Verification code sent. Enter your email code to complete signup.');
+        return;
       }
 
       const token = data.access_token || data.accessToken || data.auth_token || data.token || data.tokens?.access_token;
@@ -119,7 +196,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       setVerificationEmail(userPayload.email || form.email);
 
       if (!token && !isSignup) {
-        throw new Error(data.detail || data.message || 'Login succeeded without an access token.');
+        throw new Error(getAuthErrorMessage(data, 'Login succeeded without an access token.'));
       }
 
       if (!token && isSignup) {
@@ -131,6 +208,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           ...current,
           password: '',
           confirmPassword: '',
+          emailCode: '',
         }));
         return;
       }
@@ -145,6 +223,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       setSuccess(data.message || (isSignup ? 'Account created successfully.' : 'Logged in successfully.'));
       setForm(initialState);
+      if (isSignup) {
+        setSignupStep('details');
+        setVerificationEmail('');
+        setSignupVerificationId('');
+        setServerEmailCode('');
+        setServerMobileCode('');
+      }
       router.replace('/profile');
       router.refresh();
       window.location.assign('/profile');
@@ -167,23 +252,45 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setSuccess('');
 
     try {
-      const response = await fetch('/api/auth/resend-verification', {
+      const response = await fetch(isSignup ? '/api/auth/signup/initiate' : '/api/auth/resend-verification', {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(
+          isSignup
+            ? {
+                full_name: form.name.trim() || undefined,
+                email: email.trim(),
+                phone: form.phone.trim(),
+                password: form.password,
+              }
+            : { email: email.trim() }
+        ),
       });
 
       const data = (await response.json()) as { detail?: string; message?: string };
       if (!response.ok) {
-        throw new Error(data.detail || data.message || 'Unable to resend verification email.');
+        throw new Error(data.detail || data.message || `Unable to resend verification${isSignup ? ' codes' : ' email'}.`);
       }
 
-      setSuccess(data.message || 'Verification email sent. Please check your inbox.');
+      if (isSignup) {
+        const payload = data as { email_verification_code?: string | null; mobile_verification_code?: string | null };
+        const fallbackEmailCode = (payload.email_verification_code || '').trim();
+        setServerEmailCode(fallbackEmailCode);
+        if (fallbackEmailCode) {
+          setForm((current) => ({
+            ...current,
+            emailCode: fallbackEmailCode,
+          }));
+        }
+        setServerMobileCode((payload.mobile_verification_code || '').trim());
+      }
+
+      setSuccess(data.message || `Verification ${isSignup ? 'code sent' : 'email sent'}. Please check your inbox.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to resend verification email.');
+      setError(err instanceof Error ? err.message : `Unable to resend verification${isSignup ? ' codes' : ' email'}.`);
     } finally {
       setResendingVerification(false);
     }
@@ -199,7 +306,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          {isSignup && (
+          {isSignup && signupStep === 'details' && (
             <label className="auth-field">
               <span>Full name</span>
               <input
@@ -222,22 +329,39 @@ export default function AuthForm({ mode }: AuthFormProps) {
               value={form.email}
               onChange={handleChange('email')}
               required
+              disabled={isSignup && signupStep === 'verify'}
             />
           </label>
 
-          <label className="auth-field">
-            <span>Password</span>
-            <input
-              type="password"
-              name="password"
-              placeholder="Enter your password"
-              value={form.password}
-              onChange={handleChange('password')}
-              required
-            />
-          </label>
+          {isSignup && signupStep === 'details' ? (
+            <label className="auth-field">
+              <span>Mobile number</span>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="Enter your mobile number"
+                value={form.phone}
+                onChange={handleChange('phone')}
+                required
+              />
+            </label>
+          ) : null}
 
-          {isSignup && (
+          {(!isSignup || signupStep === 'details') && (
+            <label className="auth-field">
+              <span>Password</span>
+              <input
+                type="password"
+                name="password"
+                placeholder="Enter your password"
+                value={form.password}
+                onChange={handleChange('password')}
+                required
+              />
+            </label>
+          )}
+
+          {isSignup && signupStep === 'details' && (
             <label className="auth-field">
               <span>Confirm password</span>
               <input
@@ -251,13 +375,49 @@ export default function AuthForm({ mode }: AuthFormProps) {
             </label>
           )}
 
+          {isSignup && signupStep === 'verify' ? (
+            <>
+              <label className="auth-field">
+                <span>Email verification code</span>
+                <input
+                  type="text"
+                  name="emailCode"
+                  placeholder="Enter email code"
+                  value={form.emailCode}
+                  onChange={handleChange('emailCode')}
+                  required
+                />
+              </label>
+              {serverEmailCode ? (
+                <p className="auth-message" style={{ marginTop: '-0.25rem' }}>
+                  No email yet? Use test code: <strong>{serverEmailCode}</strong>
+                </p>
+              ) : null}
+            </>
+          ) : null}
+
           {error && <p className="auth-message auth-message-error">{error}</p>}
           {success && <p className="auth-message auth-message-success">{success}</p>}
 
-          {isSignup && verificationEmail ? (
+          {isSignup && signupStep === 'verify' && verificationEmail ? (
             <>
               <button className="auth-submit" type="button" onClick={handleResendVerification} disabled={resendingVerification || loading}>
-                {resendingVerification ? 'SENDING…' : 'RESEND VERIFICATION EMAIL'}
+                {resendingVerification ? 'SENDING…' : 'RESEND CODE'}
+              </button>
+              <button
+                className="auth-submit"
+                type="button"
+                onClick={() => {
+                  setSignupStep('details');
+                  setSignupVerificationId('');
+                  setServerEmailCode('');
+                  setServerMobileCode('');
+                  setError('');
+                  setSuccess('');
+                }}
+                disabled={loading || resendingVerification}
+              >
+                EDIT DETAILS
               </button>
               <p className="auth-message">
                 Already have a verification token? <Link href="/verify-email">Verify email</Link>
@@ -266,8 +426,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
           ) : null}
 
           <button className="auth-submit" type="submit" disabled={loading}>
-            {loading ? 'PLEASE WAIT…' : isSignup ? 'CREATE ACCOUNT' : 'SIGN IN'}
+            {loading ? 'PLEASE WAIT…' : isSignup ? (signupStep === 'details' ? 'SEND VERIFICATION CODE' : 'VERIFY & CREATE ACCOUNT') : 'SIGN IN'}
           </button>
+
         </form>
 
         <div className="auth-links">
