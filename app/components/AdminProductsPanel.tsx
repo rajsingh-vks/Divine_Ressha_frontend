@@ -424,7 +424,7 @@ export default function AdminProductsPanel() {
                         </div>
                       </td>
                       <td>{product.sku || '—'}</td>
-                      <td>{`$${product.price}`}</td>
+                      <td>{`₹${product.price}`}</td>
                       <td className={product.stock < 10 ? 'admin-stock-low' : ''}>{product.stock}</td>
                       <td>
                         <span className={`admin-status-badge admin-status-${product.status.toLowerCase()}`}>
