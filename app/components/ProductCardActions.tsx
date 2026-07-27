@@ -71,8 +71,8 @@ export default function ProductCardActions({ product }: { product: Product }) {
         type="button"
         onClick={handleCart}
         disabled={pending !== null}
-        aria-label={inCart ? 'Added to cart' : `Add to cart - $${product.price}`}
-        title={inCart ? 'Added to cart' : `Add to cart - $${product.price}`}
+        aria-label={inCart ? 'Added to cart' : `Add to cart - ₹${product.price}`}
+        title={inCart ? 'Added to cart' : `Add to cart - ₹${product.price}`}
       >
         {inCart ? (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

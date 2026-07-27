@@ -112,7 +112,7 @@ export default function AdminDashboardPanel() {
           <section className="admin-stats-grid" aria-label="Store stats">
             <article className="admin-stat-card">
               <p>Revenue</p>
-              <strong>$48,290</strong>
+              <strong>₹48,290</strong>
               <span>+12.4% this week</span>
             </article>
             <article className="admin-stat-card">

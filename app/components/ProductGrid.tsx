@@ -18,7 +18,7 @@ export default function ProductGrid({ products }: ProductGridProps) {
             <p className="product-title">{product.title}</p>
             <p className="product-tag">{product.tag}</p>
             <p className="product-notes">{product.notes}</p>
-            <p className="price-tag">${product.price}</p>
+            <p className="price-tag">₹{product.price}</p>
           </div>
         </article>
       ))}

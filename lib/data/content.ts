@@ -39,7 +39,7 @@ export const overviewContent: OverviewContent = {
   title: 'Slow rituals with botanical fragrance.',
   description:
     'One signature body wash, four fragrances, plant-derived cleansers and slow-made rituals for everyday care.',
-  priceTag: '$38 · EACH',
+  priceTag: '₹38 · EACH',
 };
 
 export const philosophyContent: PhilosophyContent = {
