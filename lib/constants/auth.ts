@@ -1,7 +1,7 @@
 export const BACKEND_API_URL =
   process.env.BACKEND_API_URL ??
   process.env.NEXT_PUBLIC_API_URL ??
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8001' : 'http://13.126.80.31');
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:8001' : 'https://api.divineressha.com');
 
 export const AUTH_ENDPOINTS = {
   login: '/auth/login',
