@@ -18,6 +18,7 @@ export default function Footer() {
       <div className="footer-bottom">
         <p>{footerBottom.copyright}</p>
         <p>{footerBottom.tagline}</p>
+        <p>{footerBottom.supportEmail}</p>
       </div>
     </footer>
   );

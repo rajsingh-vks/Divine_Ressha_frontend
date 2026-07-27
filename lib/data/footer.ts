@@ -20,7 +20,7 @@ export const footerGroups: FooterGroup[] = [
   {
     heading: 'ABOUT',
     links: [
-      { label: 'OUR STORY', href: '#ritual' },
+      { label: 'OUR STORY', href: '/about' },
       { label: 'INGREDIENTS', href: '#ritual' },
       { label: 'SUSTAINABILITY', href: '#ritual' },
     ],
@@ -30,7 +30,9 @@ export const footerGroups: FooterGroup[] = [
     links: [
       { label: 'SHIPPING', href: '#' },
       { label: 'RETURNS', href: '#' },
-      { label: 'CONTACT', href: '#' },
+      { label: 'CONTACT', href: '/contact' },
+      { label: 'PRIVACY POLICY', href: '/privacy-policy' },
+      { label: 'TERMS & CONDITIONS', href: '/terms-conditions' },
     ],
   },
   {
@@ -45,4 +47,5 @@ export const footerGroups: FooterGroup[] = [
 export const footerBottom = {
   copyright: '© 2026 DIVINE RESSHA. ALL RIGHTS RESERVED.',
   tagline: 'FORMULATED WITH CARE · MADE IN SMALL BATCHES',
+  supportEmail: 'support@divineressha.com',
 };

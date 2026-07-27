@@ -59,15 +59,6 @@ export default function Header() {
 
   return (
     <header className="site-header">
-      {/* Desktop Navigation */}
-      {/* <nav className="site-nav desktop-nav">
-        {navigationLinks.map((link) => (
-          <a key={link.href} href={link.href}>
-            {link.label}
-          </a>
-        ))}
-      </nav> */}
-
       <div className="brand">
         <Link href="/">
           <Image
@@ -80,6 +71,16 @@ export default function Header() {
           />
         </Link>
       </div>
+
+      {/* Desktop Navigation */}
+      <nav className="site-nav desktop-nav">
+        {navigationLinks.map((link) => (
+          <Link key={link.href} href={link.href}>
+            {link.label}
+          </Link>
+        ))}
+      </nav>
+
       <div className="header-actions">
         <Link href="/wishlist" className="icon-button shop-count-button" aria-label={`Wishlist ${wishlistCount}`}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -155,25 +156,25 @@ export default function Header() {
         )}
 
         {/* Hamburger */}
-        {/* <button
+        <button
           className="menu-btn"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menu"
         >
           ☰
-        </button> */}
+        </button>
       </div>
 
       {/* Mobile Navigation */}
       <nav className={`mobile-nav ${menuOpen ? 'active' : ''}`}>
         {navigationLinks.map((link) => (
-          <a
+          <Link
             key={link.href}
             href={link.href}
             onClick={() => setMenuOpen(false)}
           >
             {link.label}
-          </a>
+          </Link>
         ))}
       </nav>
     </header>
