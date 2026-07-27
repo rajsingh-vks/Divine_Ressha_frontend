@@ -47,4 +47,5 @@ export const footerGroups: FooterGroup[] = [
 export const footerBottom = {
   copyright: '© 2026 DIVINE RESSHA. ALL RIGHTS RESERVED.',
   tagline: 'FORMULATED WITH CARE · MADE IN SMALL BATCHES',
+  supportEmail: 'support@divineressha.com',
 };

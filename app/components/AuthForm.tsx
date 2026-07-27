@@ -63,6 +63,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [signupVerificationId, setSignupVerificationId] = useState('');
   const [serverEmailCode, setServerEmailCode] = useState('');
@@ -103,6 +104,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
     if (isSignup && signupStep === 'details' && form.password !== form.confirmPassword) {
       setError('Passwords do not match.');
+      return;
+    }
+
+    if (isSignup && signupStep === 'details' && !acceptedTerms) {
+      setError('Please accept the Terms & Conditions and Privacy Policy.');
       return;
     }
 
@@ -223,6 +229,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       setSuccess(data.message || (isSignup ? 'Account created successfully.' : 'Logged in successfully.'));
       setForm(initialState);
+      setAcceptedTerms(false);
       if (isSignup) {
         setSignupStep('details');
         setVerificationEmail('');
@@ -374,6 +381,20 @@ export default function AuthForm({ mode }: AuthFormProps) {
               />
             </label>
           )}
+
+          {isSignup && signupStep === 'details' ? (
+            <label className="auth-consent">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(event) => setAcceptedTerms(event.target.checked)}
+                required
+              />
+              <span>
+                I agree to the <Link href="/terms-conditions">Terms &amp; Conditions</Link> and <Link href="/privacy-policy">Privacy Policy</Link>.
+              </span>
+            </label>
+          ) : null}
 
           {isSignup && signupStep === 'verify' ? (
             <>

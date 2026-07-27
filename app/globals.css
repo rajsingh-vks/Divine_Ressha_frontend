@@ -1680,6 +1680,24 @@ img {
   box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
 }
 
+.auth-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+  color: #4f4f4f;
+  line-height: 1.45;
+}
+
+.auth-consent input {
+  margin-top: 0.2rem;
+}
+
+.auth-consent a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .auth-message {
   margin: 0;
   font-size: 0.92rem;

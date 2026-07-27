@@ -51,6 +51,11 @@ export default function PrivacyPolicyPage() {
             You may request access, correction, or deletion of your personal data by contacting us through our support channels.
           </p>
 
+          <h2>Contact</h2>
+          <p>
+            For privacy-related questions, contact us at support@divineressha.com.
+          </p>
+
           <h2>Updates</h2>
           <p>
             This policy may be updated from time to time. Continued use of the website after updates means you accept the revised

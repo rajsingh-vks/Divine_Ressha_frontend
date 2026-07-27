@@ -34,7 +34,7 @@ export default function ContactPage() {
             </div>
             <div className="info-contact-item">
               <h2>Address</h2>
-              <p>Divine Ressha, India</p>
+              <p>1601/B, Crystal Armus, Vaibhav Nagar, Chembur East, Mumbai, MH 400088 IN</p>
             </div>
           </div>
 

@@ -58,6 +58,11 @@ export default function TermsConditionsPage() {
           <p>
             We may revise these terms at any time. Continued usage after updates implies acceptance of the revised terms.
           </p>
+
+          <h2>Contact</h2>
+          <p>
+            For any questions regarding these terms, contact support@divineressha.com.
+          </p>
         </section>
       </main>
       <Footer />
