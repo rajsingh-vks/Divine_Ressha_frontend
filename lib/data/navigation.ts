@@ -4,9 +4,10 @@ export interface NavigationLink {
 }
 
 export const navigationLinks: NavigationLink[] = [
-  { label: 'SHOP', href: '#shop' },
-  { label: 'RITUAL', href: '#ritual' },
-  { label: 'JOURNAL', href: '#journal' },
+  { label: 'ABOUT US', href: '/about' },
+  { label: 'CONTACT', href: '/contact' },
+  { label: 'PRIVACY POLICY', href: '/privacy-policy' },
+  { label: 'TERMS & CONDITIONS', href: '/terms-conditions' },
 ];
 
 export const brandName = 'DIVINE RESSHA';

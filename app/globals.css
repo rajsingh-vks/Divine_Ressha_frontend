@@ -52,6 +52,7 @@ img {
 
 .brand {
   display: flex;
+  flex: 0 0 220px;
   /* align-items: center;
   gap: 0.75rem;
   font-size: 0.9rem;
@@ -64,6 +65,10 @@ img {
 
 .site-nav {
   display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 2rem;
   flex-wrap: wrap;
 }
@@ -85,9 +90,9 @@ img {
   display: flex;
   gap: 1.5rem;
   align-items: center;
-      width: 220px;
-    justify-content: end;
-   
+  flex: 0 0 220px;
+  justify-content: end;
+
 }
 
 .shop-count-button {
@@ -1509,10 +1514,13 @@ img {
   }
 
   .brand {
+    flex: 0 1 auto;
     order: -1;
   }
 
   .header-actions {
+    width: auto;
+    flex: 0 1 auto;
     gap: 1rem;
   }
 
@@ -1683,6 +1691,80 @@ img {
 
 .auth-message-success {
   color: #067647;
+}
+
+.info-page-shell {
+  width: min(940px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.info-page-card {
+  background: #fffdf7;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 26px;
+  box-shadow: 0 18px 40px rgba(28, 24, 18, 0.06);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.info-page-overline {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8f8473;
+}
+
+.info-page-card h1 {
+  margin: 0 0 0.8rem;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.info-page-card h2 {
+  margin: 1.5rem 0 0.45rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.03em;
+}
+
+.info-page-card p,
+.info-page-card li {
+  color: #4e4e4e;
+  line-height: 1.75;
+}
+
+.info-page-card ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.info-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.info-contact-item {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  background: #fff;
+}
+
+.info-contact-item h2 {
+  margin-top: 0;
+}
+
+@media (max-width: 720px) {
+  .info-page-shell {
+    padding: 1rem 0 3rem;
+  }
+
+  .info-contact-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .auth-submit {
