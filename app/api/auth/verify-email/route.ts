@@ -4,24 +4,35 @@ import { AUTH_ENDPOINTS, BACKEND_API_URL } from '@/lib/constants/auth';
 async function proxy(request: Request) {
   const payload = await request.json();
 
+  const candidateBaseUrls = Array.from(
+    new Set([BACKEND_API_URL, process.env.BACKEND_API_URL_FALLBACK, 'https://api.divineressha.com'].filter(Boolean))
+  );
   const candidatePaths = [AUTH_ENDPOINTS.verifyEmail, `/api${AUTH_ENDPOINTS.verifyEmail}`];
 
   let backendResponse: Response | null = null;
   let text = '';
 
-  for (const path of candidatePaths) {
-    const response = await fetch(`${BACKEND_API_URL}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+  for (const baseUrl of candidateBaseUrls) {
+    for (const path of candidatePaths) {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-    backendResponse = response;
-    text = await response.text();
+      backendResponse = response;
+      text = await response.text();
 
-    if (response.status !== 404 && response.status !== 405) break;
+      if (response.status !== 404 && response.status !== 405) {
+        break;
+      }
+    }
+
+    if (backendResponse && backendResponse.status !== 404 && backendResponse.status !== 405) {
+      break;
+    }
   }
 
   if (!backendResponse) {

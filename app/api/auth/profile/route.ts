@@ -8,22 +8,34 @@ async function proxy(request: Request) {
   if (authHeader) headers.set('authorization', authHeader);
   if (cookieHeader) headers.set('cookie', cookieHeader);
 
+  const candidateBaseUrls = Array.from(
+    new Set([BACKEND_API_URL, process.env.BACKEND_API_URL_FALLBACK, 'https://api.divineressha.com'].filter(Boolean))
+  );
+
   const candidatePaths = [AUTH_ENDPOINTS.profile, `/api${AUTH_ENDPOINTS.profile}`];
 
   let backendResponse: Response | null = null;
   let text = '';
 
-  for (const path of candidatePaths) {
-    const response = await fetch(`${BACKEND_API_URL}${path}`, {
-      method: request.method,
-      headers,
-      cache: 'no-store',
-    });
+  for (const baseUrl of candidateBaseUrls) {
+    for (const path of candidatePaths) {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: request.method,
+        headers,
+        cache: 'no-store',
+      });
 
-    backendResponse = response;
-    text = await response.text();
+      backendResponse = response;
+      text = await response.text();
 
-    if (response.status !== 404 && response.status !== 405) break;
+      if (response.status !== 404 && response.status !== 405) {
+        break;
+      }
+    }
+
+    if (backendResponse && backendResponse.status !== 404 && backendResponse.status !== 405) {
+      break;
+    }
   }
 
   if (!backendResponse) {
@@ -63,23 +75,34 @@ export async function PUT(request: Request) {
     if (contentType) headers.set('content-type', contentType);
 
     const body = await request.text();
+    const candidateBaseUrls = Array.from(
+      new Set([BACKEND_API_URL, process.env.BACKEND_API_URL_FALLBACK, 'https://api.divineressha.com'].filter(Boolean))
+    );
     const candidatePaths = [AUTH_ENDPOINTS.profile, `/api${AUTH_ENDPOINTS.profile}`];
 
     let backendResponse: Response | null = null;
     let text = '';
 
-    for (const path of candidatePaths) {
-      const response = await fetch(`${BACKEND_API_URL}${path}`, {
-        method: 'PUT',
-        headers,
-        body,
-        cache: 'no-store',
-      });
+    for (const baseUrl of candidateBaseUrls) {
+      for (const path of candidatePaths) {
+        const response = await fetch(`${baseUrl}${path}`, {
+          method: 'PUT',
+          headers,
+          body,
+          cache: 'no-store',
+        });
 
-      backendResponse = response;
-      text = await response.text();
+        backendResponse = response;
+        text = await response.text();
 
-      if (response.status !== 404 && response.status !== 405) break;
+        if (response.status !== 404 && response.status !== 405) {
+          break;
+        }
+      }
+
+      if (backendResponse && backendResponse.status !== 404 && backendResponse.status !== 405) {
+        break;
+      }
     }
 
     if (!backendResponse) {
