@@ -1,6 +1,32 @@
+const normalize = (value?: string | null) => {
+  const trimmed = (value || '').trim().replace(/\/+$/, '');
+  return trimmed.replace(/\/api$/i, '');
+};
+
+const isFrontendOrigin = (value: string) => {
+  if (!value) return false;
+
+  try {
+    const url = new URL(value);
+    return ['divineressha.com', 'www.divineressha.com', 'localhost:3000', '127.0.0.1:3000'].includes(url.host);
+  } catch {
+    return false;
+  }
+};
+
+const configuredBackendUrl = normalize(process.env.BACKEND_API_URL);
+const configuredPublicApiUrl = normalize(process.env.NEXT_PUBLIC_API_URL);
+const fallbackBackendUrl = normalize(process.env.BACKEND_API_URL_FALLBACK || 'https://api.divineressha.com');
+
+const resolvedProductionBackendUrl =
+  (configuredBackendUrl && !isFrontendOrigin(configuredBackendUrl) ? configuredBackendUrl : '') ||
+  (configuredPublicApiUrl && !isFrontendOrigin(configuredPublicApiUrl) ? configuredPublicApiUrl : '') ||
+  fallbackBackendUrl;
+
 export const BACKEND_API_URL =
-  process.env.BACKEND_API_URL ??
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8001' : '');
+  process.env.NODE_ENV === 'development'
+    ? configuredBackendUrl || configuredPublicApiUrl || 'http://localhost:8001'
+    : resolvedProductionBackendUrl;
 
 export const AUTH_ENDPOINTS = {
   login: '/auth/login',
