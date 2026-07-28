@@ -1,4 +1,7 @@
-const normalize = (value?: string | null) => (value || '').trim().replace(/\/+$/, '');
+const normalize = (value?: string | null) => {
+  const trimmed = (value || '').trim().replace(/\/+$/, '');
+  return trimmed.replace(/\/api$/i, '');
+};
 
 const isFrontendOrigin = (value: string) => {
   if (!value) return false;
