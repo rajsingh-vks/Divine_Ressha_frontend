@@ -4,15 +4,30 @@ import { AUTH_ENDPOINTS, BACKEND_API_URL } from '@/lib/constants/auth';
 async function proxy(request: Request) {
   const payload = await request.json();
 
-  const backendResponse = await fetch(`${BACKEND_API_URL}${AUTH_ENDPOINTS.login}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  const candidatePaths = [AUTH_ENDPOINTS.login, `/api${AUTH_ENDPOINTS.login}`];
 
-  const text = await backendResponse.text();
+  let backendResponse: Response | null = null;
+  let text = '';
+
+  for (const path of candidatePaths) {
+    const response = await fetch(`${BACKEND_API_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    backendResponse = response;
+    text = await response.text();
+
+    if (response.status !== 404 && response.status !== 405) break;
+  }
+
+  if (!backendResponse) {
+    return NextResponse.json({ detail: 'Unable to reach authentication service.' }, { status: 502 });
+  }
+
   let data: unknown = {};
 
   try {
