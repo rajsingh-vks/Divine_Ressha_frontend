@@ -3,6 +3,10 @@ import { BACKEND_API_URL } from '@/lib/constants/auth';
 
 const ITEM_PATHS = ['/products', '/api/products'];
 
+const BACKEND_BASE_URLS = Array.from(
+  new Set([BACKEND_API_URL, process.env.BACKEND_API_URL_FALLBACK, 'https://api.divineressha.com'].filter(Boolean))
+);
+
 async function proxy(request: Request, productId: string) {
   const reqUrl = new URL(request.url);
   const query = reqUrl.search;
@@ -22,19 +26,27 @@ async function proxy(request: Request, productId: string) {
   let backendResponse: Response | null = null;
   let text = '';
 
-  for (const basePath of ITEM_PATHS) {
-    const url = `${BACKEND_API_URL}${basePath}/${encodeURIComponent(productId)}${query}`;
-    const response = await fetch(url, {
-      method: request.method,
-      headers,
-      body: isBodyMethod && rawBody ? rawBody : undefined,
-      cache: 'no-store',
-    });
+  for (const baseUrl of BACKEND_BASE_URLS) {
+    for (const basePath of ITEM_PATHS) {
+      const url = `${baseUrl}${basePath}/${encodeURIComponent(productId)}${query}`;
+      const response = await fetch(url, {
+        method: request.method,
+        headers,
+        body: isBodyMethod && rawBody ? rawBody : undefined,
+        cache: 'no-store',
+      });
 
-    backendResponse = response;
-    text = await response.text();
+      backendResponse = response;
+      text = await response.text();
 
-    if (response.status !== 404 && response.status !== 405) break;
+      if (response.status !== 404 && response.status !== 405) {
+        break;
+      }
+    }
+
+    if (backendResponse && backendResponse.status !== 404 && backendResponse.status !== 405) {
+      break;
+    }
   }
 
   if (!backendResponse) {
