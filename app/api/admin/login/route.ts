@@ -22,6 +22,27 @@ type UserProfile = {
 
 const extractToken = (payload: LoginResponse) => payload.tokens?.access_token || '';
 
+const withApiPrefix = (path: string) => (path.startsWith('/api/') ? path : `/api${path}`);
+
+const fetchWithFallback = async (paths: string[], init: RequestInit) => {
+  let lastResponse: Response | null = null;
+  let lastText = '';
+
+  for (const path of paths) {
+    const response = await fetch(`${BACKEND_API_URL}${path}`, init);
+    const text = await response.text();
+
+    lastResponse = response;
+    lastText = text;
+
+    if (response.status !== 404 && response.status !== 405) {
+      break;
+    }
+  }
+
+  return { response: lastResponse, text: lastText };
+};
+
 const extractCookieHeader = (setCookie: string | null) => {
   if (!setCookie) return '';
 
@@ -38,7 +59,8 @@ export async function POST(request: Request) {
     const requestedEmail = String(payload?.email || '').trim().toLowerCase();
     const isKnownAdminEmail = requestedEmail === 'admin@divinereesha.com';
 
-    const loginResponse = await fetch(`${BACKEND_API_URL}${AUTH_ENDPOINTS.login}`, {
+    const loginPaths = [AUTH_ENDPOINTS.login, withApiPrefix(AUTH_ENDPOINTS.login)];
+    const { response: loginResponse, text: loginText } = await fetchWithFallback(loginPaths, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -46,7 +68,13 @@ export async function POST(request: Request) {
       body: JSON.stringify(payload),
     });
 
-    const loginText = await loginResponse.text();
+    if (!loginResponse) {
+      return NextResponse.json(
+        { detail: 'Unable to reach admin authentication service.' },
+        { status: 502 }
+      );
+    }
+
     let loginData: LoginResponse = {};
 
     try {
@@ -84,13 +112,19 @@ export async function POST(request: Request) {
     let profileData: UserProfile | null = profileFromLogin;
 
     if (!profileData) {
-      const profileResponse = await fetch(`${BACKEND_API_URL}${AUTH_ENDPOINTS.profile}`, {
+      const profilePaths = [AUTH_ENDPOINTS.profile, withApiPrefix(AUTH_ENDPOINTS.profile)];
+      const { response: profileResponse, text: profileText } = await fetchWithFallback(profilePaths, {
         method: 'GET',
         headers: profileHeaders,
         cache: 'no-store',
       });
 
-      const profileText = await profileResponse.text();
+      if (!profileResponse) {
+        return NextResponse.json(
+          { detail: 'Unable to verify admin profile.' },
+          { status: 502 }
+        );
+      }
 
       try {
         profileData = profileText ? (JSON.parse(profileText) as UserProfile) : null;
