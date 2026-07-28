@@ -1208,11 +1208,36 @@ img {
 }
 
 .price-tag {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: #1a1a1a;
+}
+
+.price-current {
+  color: #1a1a1a;
+}
+
+.price-original {
+  font-size: 0.82rem;
+  color: #8d8d8d;
+  text-decoration: line-through;
+  letter-spacing: 0.08em;
+}
+
+.price-discount {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: #0f7a3f;
+  border: 1px solid rgba(15, 122, 63, 0.25);
+  border-radius: 999px;
+  padding: 0.2rem 0.45rem;
+  background: rgba(15, 122, 63, 0.08);
 }
 
 .product-grid {
@@ -1242,6 +1267,10 @@ img {
   object-fit: cover;
 }
 
+.product-image-link {
+  display: block;
+}
+
 .product-copy {
   padding: 1rem 0;
 }
@@ -1250,6 +1279,10 @@ img {
   margin: 0 0 0.75rem;
   /* font-weight: 700; */
   color: #1a1a1a;
+}
+
+.product-title a {
+  color: inherit;
 }
 
 .product-tag {
@@ -1265,6 +1298,71 @@ img {
   color: #5a5a5a;
   line-height: 1.7;
   font-size: 0.8rem;
+}
+
+.product-detail-link {
+  display: inline-flex;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a1a1a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.product-detail-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.product-detail-card {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 1.2fr);
+  gap: 1.4rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fffdf7;
+  border-radius: 24px;
+  padding: 1.2rem;
+}
+
+.product-detail-media img {
+  width: 100%;
+  aspect-ratio: 1 / 1.15;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+.product-detail-content h1 {
+  margin: 0.2rem 0 0.8rem;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+
+.product-detail-price {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+
+.product-detail-actions {
+  margin: 0.9rem 0 1.2rem;
+}
+
+.product-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.product-detail-meta p {
+  margin: 0;
+  color: #4e4e4e;
+  line-height: 1.6;
+  font-size: 0.9rem;
 }
 
 .product-button {
@@ -1614,6 +1712,14 @@ img {
   .philosophy h2 {
     padding: 3rem 0;
     font-size: 2.2rem;
+  }
+
+  .product-detail-card {
+    grid-template-columns: 1fr;
+  }
+
+  .product-detail-meta {
+    grid-template-columns: 1fr;
   }
 }
 
