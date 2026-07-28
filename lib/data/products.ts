@@ -11,6 +11,21 @@ export interface Product {
   description?: string;
 }
 
+export interface ProductDetail extends Product {
+  category?: string;
+  subcategory?: string;
+  brand?: string;
+  fragrance?: string;
+  packSize?: string;
+  form?: string;
+  usage?: string;
+  stock?: number;
+  sku?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const products: Product[] = [
   {
     id: '01',
@@ -52,6 +67,7 @@ export const products: Product[] = [
 
 type BackendProduct = {
   id: string;
+  _id?: string;
   name: string;
   category?: string | null;
   subcategory?: string | null;
@@ -82,7 +98,28 @@ const normalizeBackendProducts = (payload: ProductCollectionPayload): BackendPro
   return payload.items || payload.data || payload.products || [];
 };
 
-const mapBackendProductToUi = (product: BackendProduct, index: number): Product => {
+const PRODUCT_COLLECTION_PATHS = ['/products', '/api/products'];
+
+const fetchFromBackend = async (paths: string[]) => {
+  let backendResponse: Response | null = null;
+
+  for (const path of paths) {
+    const response = await fetch(`${BACKEND_API_URL}${path}`, {
+      method: 'GET',
+      cache: 'no-store',
+    });
+
+    backendResponse = response;
+
+    if (response.status !== 404 && response.status !== 405) {
+      return response;
+    }
+  }
+
+  return backendResponse;
+};
+
+const mapBackendProductToUi = (product: BackendProduct, index: number): ProductDetail => {
   const categoryPart = product.category || 'Signature';
   const subcategoryPart = product.subcategory || product.form || 'Collection';
   const tag = `${categoryPart} · ${subcategoryPart}`;
@@ -91,24 +128,33 @@ const mapBackendProductToUi = (product: BackendProduct, index: number): Product 
   const notes = notesParts.length ? notesParts.join(' · ') : 'Botanical blend';
 
   return {
-    id: String(product.id || index + 1),
+    id: String(product.id || product._id || index + 1),
     title: product.name || `Product ${index + 1}`,
     tag,
     notes,
     image: proxyImageUrl(product.image_url, products[index % products.length]?.image || products[0].image),
     price: Number(product.price ?? 0),
     description: product.brand || undefined,
+    category: product.category || undefined,
+    subcategory: product.subcategory || undefined,
+    brand: product.brand || undefined,
+    fragrance: product.fragrance || undefined,
+    packSize: product.pack_size || undefined,
+    form: product.form || undefined,
+    usage: product.usage || undefined,
+    stock: typeof product.stock === 'number' ? product.stock : undefined,
+    sku: product.sku || undefined,
+    status: product.status || undefined,
+    createdAt: product.created_at,
+    updatedAt: product.updated_at,
   };
 };
 
 export async function getProducts(): Promise<Product[]> {
   try {
-    const response = await fetch(`${BACKEND_API_URL}/products`, {
-      method: 'GET',
-      cache: 'no-store',
-    });
+    const response = await fetchFromBackend(PRODUCT_COLLECTION_PATHS);
 
-    if (!response.ok) return products;
+    if (!response || !response.ok) return products;
 
     const payload = (await response.json()) as ProductCollectionPayload;
     const collection = normalizeBackendProducts(payload);
@@ -119,4 +165,48 @@ export async function getProducts(): Promise<Product[]> {
   } catch {
     return products;
   }
+}
+
+export async function getProductDetails(productId: string): Promise<ProductDetail | null> {
+  const normalizedId = String(productId || '').trim();
+  if (!normalizedId) return null;
+
+  const fallbackStatic = products.find((item) => item.id === normalizedId);
+
+  try {
+    const itemResponse = await fetchFromBackend([
+      `/products/${encodeURIComponent(normalizedId)}`,
+      `/api/products/${encodeURIComponent(normalizedId)}`,
+    ]);
+
+    if (itemResponse && itemResponse.ok) {
+      const payload = (await itemResponse.json()) as BackendProduct;
+      return mapBackendProductToUi(payload, 0);
+    }
+
+    const listResponse = await fetchFromBackend(PRODUCT_COLLECTION_PATHS);
+    if (listResponse && listResponse.ok) {
+      const payload = (await listResponse.json()) as ProductCollectionPayload;
+      const collection = normalizeBackendProducts(payload);
+      const found = collection.find(
+        (item) => String(item.id || item._id || '') === normalizedId
+      );
+
+      if (found) {
+        return mapBackendProductToUi(found, 0);
+      }
+    }
+  } catch {
+    // fall through to static fallback
+  }
+
+  if (fallbackStatic) {
+    return {
+      ...fallbackStatic,
+      category: 'Signature',
+      status: 'Active',
+    };
+  }
+
+  return null;
 }

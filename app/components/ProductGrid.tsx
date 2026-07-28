@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import ProductCardActions from './ProductCardActions';
 import type { Product } from '@/lib/data/products';
 
@@ -21,13 +22,17 @@ export default function ProductGrid({ products }: ProductGridProps) {
         const discountedPrice = Math.round(product.price * (1 - DISCOUNT_PERCENT / 100));
 
         return (
-          <article className="product-card" key={product.title}>
+          <article className="product-card" key={product.id}>
             <ProductCardActions product={product} />
-            <div className="product-image">
-              <img src={product.image} alt={product.title} loading="lazy" />
-            </div>
+            <Link href={`/products/${encodeURIComponent(product.id)}`} className="product-image-link" aria-label={`View ${product.title}`}>
+              <div className="product-image">
+                <img src={product.image} alt={product.title} loading="lazy" />
+              </div>
+            </Link>
             <div className="product-copy">
-              <p className="product-title">{product.title}</p>
+              <p className="product-title">
+                <Link href={`/products/${encodeURIComponent(product.id)}`}>{product.title}</Link>
+              </p>
               <p className="product-tag">{product.tag}</p>
               <p className="product-notes">{product.notes}</p>
               <p className="price-tag">
@@ -35,6 +40,9 @@ export default function ProductGrid({ products }: ProductGridProps) {
                 <span className="price-original">{formatCurrency(product.price)}</span>
                 <span className="price-discount">{DISCOUNT_PERCENT}% OFF</span>
               </p>
+              <Link href={`/products/${encodeURIComponent(product.id)}`} className="product-detail-link">
+                View details
+              </Link>
             </div>
           </article>
         );
