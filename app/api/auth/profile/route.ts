@@ -8,13 +8,28 @@ async function proxy(request: Request) {
   if (authHeader) headers.set('authorization', authHeader);
   if (cookieHeader) headers.set('cookie', cookieHeader);
 
-  const backendResponse = await fetch(`${BACKEND_API_URL}${AUTH_ENDPOINTS.profile}`, {
-    method: request.method,
-    headers,
-    cache: 'no-store',
-  });
+  const candidatePaths = [AUTH_ENDPOINTS.profile, `/api${AUTH_ENDPOINTS.profile}`];
 
-  const text = await backendResponse.text();
+  let backendResponse: Response | null = null;
+  let text = '';
+
+  for (const path of candidatePaths) {
+    const response = await fetch(`${BACKEND_API_URL}${path}`, {
+      method: request.method,
+      headers,
+      cache: 'no-store',
+    });
+
+    backendResponse = response;
+    text = await response.text();
+
+    if (response.status !== 404 && response.status !== 405) break;
+  }
+
+  if (!backendResponse) {
+    return NextResponse.json({ detail: 'Unable to reach profile service.' }, { status: 502 });
+  }
+
   let data: unknown = {};
 
   try {
@@ -48,14 +63,29 @@ export async function PUT(request: Request) {
     if (contentType) headers.set('content-type', contentType);
 
     const body = await request.text();
-    const backendResponse = await fetch(`${BACKEND_API_URL}${AUTH_ENDPOINTS.profile}`, {
-      method: 'PUT',
-      headers,
-      body,
-      cache: 'no-store',
-    });
+    const candidatePaths = [AUTH_ENDPOINTS.profile, `/api${AUTH_ENDPOINTS.profile}`];
 
-    const text = await backendResponse.text();
+    let backendResponse: Response | null = null;
+    let text = '';
+
+    for (const path of candidatePaths) {
+      const response = await fetch(`${BACKEND_API_URL}${path}`, {
+        method: 'PUT',
+        headers,
+        body,
+        cache: 'no-store',
+      });
+
+      backendResponse = response;
+      text = await response.text();
+
+      if (response.status !== 404 && response.status !== 405) break;
+    }
+
+    if (!backendResponse) {
+      return NextResponse.json({ detail: 'Unable to reach profile service.' }, { status: 502 });
+    }
+
     let data: unknown = {};
 
     try {
