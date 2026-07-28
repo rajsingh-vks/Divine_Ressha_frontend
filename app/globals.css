@@ -1208,11 +1208,36 @@ img {
 }
 
 .price-tag {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: #1a1a1a;
+}
+
+.price-current {
+  color: #1a1a1a;
+}
+
+.price-original {
+  font-size: 0.82rem;
+  color: #8d8d8d;
+  text-decoration: line-through;
+  letter-spacing: 0.08em;
+}
+
+.price-discount {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: #0f7a3f;
+  border: 1px solid rgba(15, 122, 63, 0.25);
+  border-radius: 999px;
+  padding: 0.2rem 0.45rem;
+  background: rgba(15, 122, 63, 0.08);
 }
 
 .product-grid {

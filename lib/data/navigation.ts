@@ -4,6 +4,8 @@ export interface NavigationLink {
 }
 
 export const navigationLinks: NavigationLink[] = [
+  { label: 'HOME', href: '/' },
+  { label: 'PRODUCTS', href: '/products' },
   { label: 'ABOUT US', href: '/about' },
   { label: 'CONTACT', href: '/contact' },
   { label: 'PRIVACY POLICY', href: '/privacy-policy' },
