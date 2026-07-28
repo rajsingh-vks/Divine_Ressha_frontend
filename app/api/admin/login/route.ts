@@ -24,19 +24,28 @@ const extractToken = (payload: LoginResponse) => payload.tokens?.access_token ||
 
 const withApiPrefix = (path: string) => (path.startsWith('/api/') ? path : `/api${path}`);
 
+const BACKEND_BASE_URL_CANDIDATES = Array.from(
+  new Set([
+    BACKEND_API_URL,
+    'https://api.divineressha.com',
+  ].filter(Boolean))
+);
+
 const fetchWithFallback = async (paths: string[], init: RequestInit) => {
   let lastResponse: Response | null = null;
   let lastText = '';
 
-  for (const path of paths) {
-    const response = await fetch(`${BACKEND_API_URL}${path}`, init);
-    const text = await response.text();
+  for (const baseUrl of BACKEND_BASE_URL_CANDIDATES) {
+    for (const path of paths) {
+      const response = await fetch(`${baseUrl}${path}`, init);
+      const text = await response.text();
 
-    lastResponse = response;
-    lastText = text;
+      lastResponse = response;
+      lastText = text;
 
-    if (response.status !== 404 && response.status !== 405) {
-      break;
+      if (response.status !== 404 && response.status !== 405) {
+        return { response: lastResponse, text: lastText };
+      }
     }
   }
 
