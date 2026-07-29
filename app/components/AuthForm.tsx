@@ -462,7 +462,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
               New here? <Link href="/signup">Create account</Link>
             </p>
           )}
-          <Link href="/">Back to home</Link>
         </div>
       </div>
     </section>
