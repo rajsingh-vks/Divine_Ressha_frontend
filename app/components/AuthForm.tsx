@@ -66,7 +66,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [signupVerificationId, setSignupVerificationId] = useState('');
-  const [serverEmailCode, setServerEmailCode] = useState('');
   const [serverMobileCode, setServerMobileCode] = useState('');
   const [resendingVerification, setResendingVerification] = useState(false);
   const [signupStep, setSignupStep] = useState<'details' | 'verify'>('details');
@@ -171,14 +170,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
       if (isSignup && signupStep === 'details') {
         setSignupStep('verify');
         setVerificationEmail(form.email.trim());
-        const fallbackEmailCode = (data.email_verification_code || '').trim();
-        setServerEmailCode(fallbackEmailCode);
-        if (fallbackEmailCode) {
-          setForm((current) => ({
-            ...current,
-            emailCode: fallbackEmailCode,
-          }));
-        }
         setServerMobileCode((data.mobile_verification_code || '').trim());
         setSignupVerificationId(
           String(
@@ -234,7 +225,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
         setSignupStep('details');
         setVerificationEmail('');
         setSignupVerificationId('');
-        setServerEmailCode('');
         setServerMobileCode('');
       }
       router.replace('/profile');
@@ -284,14 +274,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       if (isSignup) {
         const payload = data as { email_verification_code?: string | null; mobile_verification_code?: string | null };
-        const fallbackEmailCode = (payload.email_verification_code || '').trim();
-        setServerEmailCode(fallbackEmailCode);
-        if (fallbackEmailCode) {
-          setForm((current) => ({
-            ...current,
-            emailCode: fallbackEmailCode,
-          }));
-        }
         setServerMobileCode((payload.mobile_verification_code || '').trim());
       }
 
@@ -409,11 +391,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   required
                 />
               </label>
-              {serverEmailCode ? (
-                <p className="auth-message" style={{ marginTop: '-0.25rem' }}>
-                  No email yet? Use test code: <strong>{serverEmailCode}</strong>
-                </p>
-              ) : null}
             </>
           ) : null}
 
@@ -431,7 +408,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 onClick={() => {
                   setSignupStep('details');
                   setSignupVerificationId('');
-                  setServerEmailCode('');
                   setServerMobileCode('');
                   setError('');
                   setSuccess('');
