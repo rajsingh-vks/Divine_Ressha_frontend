@@ -457,7 +457,7 @@ export default function OrdersPanel() {
                 <ul className="order-items-list">
                   {order.items.map((item) => (
                     <li key={`${order.id}-${item.product_id}`} className="order-item-row">
-                      <img src={proxyImageUrl(item.image_url, '/images/banner.jpg')} alt={item.name} className="order-item-thumb" />
+                      <img src={proxyImageUrl(item.image_url, '/images/banner_main.jpeg')} alt={item.name} className="order-item-thumb" />
                       <div>
                         <strong>{item.name}</strong>
                         <small>Qty {item.quantity} × {formatCurrency(Number(item.unit_price || 0))}</small>

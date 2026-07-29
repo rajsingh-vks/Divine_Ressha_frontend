@@ -33,7 +33,7 @@ const getProductId = (item: ShopItem) => String(item.product?.id ?? item.product
 
 const getCartItemId = (item: ShopItem) => String(item.id ?? getProductId(item));
 
-const getItemImage = (item: ShopItem) => proxyImageUrl(item.product?.image_url, '/images/banner.jpg');
+const getItemImage = (item: ShopItem) => proxyImageUrl(item.product?.image_url, '/images/banner_main.jpeg');
 
 const getUnitPrice = (item: ShopItem) => Number(item.unit_price ?? item.product?.price ?? item.price ?? 0);
 

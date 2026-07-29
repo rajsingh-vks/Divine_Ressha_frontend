@@ -31,7 +31,7 @@ export const heroContent: HeroContent = {
   title: 'Bathe in the garden.',
   buttonText: 'SHOP THE RITUAL',
   buttonHref: '#shop',
-  backgroundImage: '/images/banner.jpg',
+  backgroundImage: '/images/banner_main.jpeg',
 };
 
 export const overviewContent: OverviewContent = {

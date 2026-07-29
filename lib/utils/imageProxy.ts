@@ -5,7 +5,7 @@
  * Backend returns: http://13.126.80.31/api/media/products/...
  * This function returns: /api/media?url=http%3A%2F%2F13.126.80.31%2F...
  */
-export function proxyImageUrl(url: string | null | undefined, fallback = '/images/banner.jpg'): string {
+export function proxyImageUrl(url: string | null | undefined, fallback = '/images/banner_main.jpeg'): string {
   if (!url) return fallback;
 
   // Backend-relative media paths should also be proxied.
