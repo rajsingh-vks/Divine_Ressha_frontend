@@ -57,12 +57,15 @@ const initialState = {
   emailCode: '',
 };
 
+const REMEMBER_EMAIL_KEY = 'divine_ressha_remember_email';
+
 export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [signupVerificationId, setSignupVerificationId] = useState('');
@@ -80,6 +83,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
       router.replace('/profile');
     }
   }, [mode, router]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || isSignup) return;
+    const rememberedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY) || '';
+    if (!rememberedEmail) return;
+
+    setRememberMe(true);
+    setForm((current) => ({ ...current, email: rememberedEmail }));
+  }, [isSignup]);
 
   const title = useMemo(() => (isSignup ? 'Create account' : 'Welcome back'), [isSignup]);
   const subtitle = useMemo(
@@ -212,6 +224,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       if (token) {
         localStorage.setItem(AUTH_TOKEN_KEY, token);
+      }
+
+      if (!isSignup) {
+        if (rememberMe) {
+          localStorage.setItem(REMEMBER_EMAIL_KEY, form.email.trim());
+        } else {
+          localStorage.removeItem(REMEMBER_EMAIL_KEY);
+        }
       }
 
       localStorage.setItem(AUTH_SESSION_KEY, '1');
@@ -392,6 +412,20 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 />
               </label>
             </>
+          ) : null}
+
+          {!isSignup ? (
+            <div className="auth-login-meta">
+              <label className="auth-remember">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(event) => setRememberMe(event.target.checked)}
+                />
+                <span>Remember me</span>
+              </label>
+              <Link href="/forgot-password">Forgot password?</Link>
+            </div>
           ) : null}
 
           {error && <p className="auth-message auth-message-error">{error}</p>}
