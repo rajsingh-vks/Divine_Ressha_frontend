@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { AUTH_ENDPOINTS, BACKEND_API_URL } from '@/lib/constants/auth';
+import { BACKEND_API_URL } from '@/lib/constants/auth';
 
 async function proxy(request: Request) {
   const payload = await request.json();
@@ -7,7 +7,7 @@ async function proxy(request: Request) {
   const candidateBaseUrls = Array.from(
     new Set([BACKEND_API_URL, process.env.BACKEND_API_URL_FALLBACK, 'https://api.divineressha.com'].filter(Boolean))
   );
-  const candidatePaths = [AUTH_ENDPOINTS.resendResetPassword, `/api${AUTH_ENDPOINTS.resendResetPassword}`];
+  const candidatePaths = ['/auth/resend-reset-password', '/api/auth/resend-reset-password'];
 
   let backendResponse: Response | null = null;
   let text = '';
