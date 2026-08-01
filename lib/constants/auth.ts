@@ -36,6 +36,9 @@ export const AUTH_ENDPOINTS = {
   profile: '/auth/profile',
   verifyEmail: '/auth/verify-email',
   resendVerification: '/auth/resend-verification',
+  forgotPassword: '/auth/forgot-password',
+  resetPassword: '/auth/reset-password',
+  resendResetPassword: '/auth/resend-reset-password',
 } as const;
 
 export const AUTH_TOKEN_KEY = 'divine_ressha_auth_token';
