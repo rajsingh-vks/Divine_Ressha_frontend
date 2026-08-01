@@ -1804,6 +1804,31 @@ img {
   text-underline-offset: 2px;
 }
 
+.auth-login-meta {
+  margin-top: -0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  font-size: 0.86rem;
+  color: #4f4f4f;
+}
+
+.auth-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.auth-remember input {
+  margin: 0;
+}
+
+.auth-login-meta a {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
 .auth-message {
   margin: 0;
   font-size: 0.92rem;
