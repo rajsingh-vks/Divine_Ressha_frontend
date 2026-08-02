@@ -17,6 +17,7 @@ export default function AdminSidebar({
   const navItems = [
     { label: 'Overview', href: '/admin/dashboard' },
     { label: 'Products', href: '/admin/products' },
+    { label: 'Hero Banners', href: '/admin/hero-banners' },
     { label: 'Orders', href: '/admin/orders' },
     { label: 'Users', href: '/admin/users' },
     { label: 'Tracking', href: '/admin/tracking' },
