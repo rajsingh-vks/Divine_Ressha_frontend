@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_API_URL } from '@/lib/constants/auth';
 
 const ITEM_PATHS = [
@@ -37,7 +37,7 @@ const BACKEND_BASE_URLS = Array.from(
   )
 );
 
-async function proxy(request: Request, itemId: string) {
+async function proxy(request: NextRequest, itemId: string) {
   const reqUrl = new URL(request.url);
   const query = reqUrl.search;
 
@@ -104,19 +104,22 @@ async function proxy(request: Request, itemId: string) {
 }
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     itemId: string;
-  };
+  }>;
 };
 
-export async function PATCH(request: Request, context: RouteContext) {
-  return proxy(request, context.params.itemId);
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { itemId } = await context.params;
+  return proxy(request, itemId);
 }
 
-export async function PUT(request: Request, context: RouteContext) {
-  return proxy(request, context.params.itemId);
+export async function PUT(request: NextRequest, context: RouteContext) {
+  const { itemId } = await context.params;
+  return proxy(request, itemId);
 }
 
-export async function DELETE(request: Request, context: RouteContext) {
-  return proxy(request, context.params.itemId);
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const { itemId } = await context.params;
+  return proxy(request, itemId);
 }
