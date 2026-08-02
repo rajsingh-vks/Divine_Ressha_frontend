@@ -10,8 +10,23 @@ import {
 
 type AdminLoginResponse = {
   token?: string;
+  access_token?: string;
+  accessToken?: string;
+  auth_token?: string;
   message?: string;
   detail?: string;
+  data?: {
+    token?: string;
+    access_token?: string;
+    accessToken?: string;
+    auth_token?: string;
+  };
+  tokens?: {
+    access_token?: string;
+    accessToken?: string;
+    token?: string;
+    auth_token?: string;
+  };
   user?: {
     id?: string;
     email?: string;
@@ -19,6 +34,21 @@ type AdminLoginResponse = {
     role?: string;
   };
 };
+
+const extractToken = (payload: AdminLoginResponse) =>
+  payload.token ||
+  payload.access_token ||
+  payload.accessToken ||
+  payload.auth_token ||
+  payload.tokens?.access_token ||
+  payload.tokens?.accessToken ||
+  payload.tokens?.token ||
+  payload.tokens?.auth_token ||
+  payload.data?.token ||
+  payload.data?.access_token ||
+  payload.data?.accessToken ||
+  payload.data?.auth_token ||
+  '';
 
 export default function AdminLoginForm() {
   const router = useRouter();
@@ -37,7 +67,9 @@ export default function AdminLoginForm() {
     if (!isSession && !hasToken) return;
 
     if (!userRaw) {
-      router.replace('/admin/dashboard');
+      localStorage.removeItem(ADMIN_AUTH_SESSION_KEY);
+      localStorage.removeItem(ADMIN_AUTH_TOKEN_KEY);
+      localStorage.removeItem(ADMIN_AUTH_USER_KEY);
       return;
     }
 
@@ -47,7 +79,9 @@ export default function AdminLoginForm() {
         router.replace('/admin/dashboard');
       }
     } catch {
-      router.replace('/admin/dashboard');
+      localStorage.removeItem(ADMIN_AUTH_SESSION_KEY);
+      localStorage.removeItem(ADMIN_AUTH_TOKEN_KEY);
+      localStorage.removeItem(ADMIN_AUTH_USER_KEY);
     }
   }, [router]);
 
@@ -72,8 +106,10 @@ export default function AdminLoginForm() {
         throw new Error(data.detail || data.message || 'Admin login failed.');
       }
 
-      if (data.token) {
-        localStorage.setItem(ADMIN_AUTH_TOKEN_KEY, data.token);
+      const token = extractToken(data);
+
+      if (token) {
+        localStorage.setItem(ADMIN_AUTH_TOKEN_KEY, token);
       } else {
         localStorage.removeItem(ADMIN_AUTH_TOKEN_KEY);
       }

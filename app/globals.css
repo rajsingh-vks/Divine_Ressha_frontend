@@ -903,6 +903,10 @@ img {
   padding: 3rem;
 }
 
+.hero.hero-secondary {
+  margin-top: 0rem;
+}
+
 .hero::before {
   content: '';
   position: absolute;

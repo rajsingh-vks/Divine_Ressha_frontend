@@ -2,14 +2,27 @@ import { NextResponse } from 'next/server';
 import { AUTH_ENDPOINTS, BACKEND_API_URL } from '@/lib/constants/auth';
 
 type LoginResponse = {
+  token?: string;
+  access_token?: string;
+  accessToken?: string;
+  auth_token?: string;
   message?: string;
   detail?: string;
   user?: UserProfile;
   tokens?: {
     access_token?: string;
+    accessToken?: string;
+    token?: string;
+    auth_token?: string;
     refresh_token?: string;
     token_type?: string;
     expires_in?: number;
+  } | null;
+  data?: {
+    token?: string;
+    access_token?: string;
+    accessToken?: string;
+    auth_token?: string;
   } | null;
 };
 
@@ -20,7 +33,37 @@ type UserProfile = {
   role?: string;
 };
 
-const extractToken = (payload: LoginResponse) => payload.tokens?.access_token || '';
+const extractToken = (payload: LoginResponse) =>
+  payload.token ||
+  payload.access_token ||
+  payload.accessToken ||
+  payload.auth_token ||
+  payload.tokens?.access_token ||
+  payload.tokens?.accessToken ||
+  payload.tokens?.token ||
+  payload.tokens?.auth_token ||
+  payload.data?.token ||
+  payload.data?.access_token ||
+  payload.data?.accessToken ||
+  payload.data?.auth_token ||
+  '';
+
+const normalizeSetCookieForLocalDev = (setCookie: string, requestUrl: string) => {
+  try {
+    const url = new URL(requestUrl);
+    const isLocalhost = ['localhost', '127.0.0.1'].includes(url.hostname);
+    const isHttp = url.protocol === 'http:';
+
+    if (!isLocalhost || !isHttp) return setCookie;
+
+    return setCookie
+      .replace(/;\s*Domain=[^;]+/gi, '')
+      .replace(/;\s*Secure/gi, '')
+      .replace(/SameSite=None/gi, 'SameSite=Lax');
+  } catch {
+    return setCookie;
+  }
+};
 
 const withApiPrefix = (path: string) => (path.startsWith('/api/') ? path : `/api${path}`);
 
@@ -180,7 +223,7 @@ export async function POST(request: Request) {
     );
 
     if (setCookie) {
-      response.headers.set('set-cookie', setCookie);
+      response.headers.set('set-cookie', normalizeSetCookieForLocalDev(setCookie, request.url));
     }
 
     return response;
