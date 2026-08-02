@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ShopActionsProvider } from './components/ShopActionsProvider';
+import AppMotion from './components/AppMotion';
 
 export const metadata: Metadata = {
   title: 'Divine Ressha',
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ShopActionsProvider>{children}</ShopActionsProvider>
+        <AppMotion />
       </body>
     </html>
   );
