@@ -666,7 +666,8 @@
 }
 
 .admin-form-field input,
-.admin-form-field select {
+.admin-form-field select,
+.admin-form-field textarea {
   padding: 0.6rem 0.75rem;
   border: 1px solid #dbd5c9;
   background: #faf7ef;
@@ -677,9 +678,14 @@
 }
 
 .admin-form-field input:focus,
-.admin-form-field select:focus {
+.admin-form-field select:focus,
+.admin-form-field textarea:focus {
   border-color: #131210;
   box-shadow: 0 0 0 2px rgba(19,18,16,0.08);
+}
+
+.admin-form-field textarea {
+  resize: vertical;
 }
 
 .admin-checkbox-field {
