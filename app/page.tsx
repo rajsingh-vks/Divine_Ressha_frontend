@@ -5,6 +5,7 @@ import Overview from './components/Overview';
 import ProductGrid from './components/ProductGrid';
 import Features from './components/Features';
 import Philosophy from './components/Philosophy';
+import Testimonials from './components/Testimonials';
 import Newsletter from './components/Newsletter';
 import Footer from './components/Footer';
 import { getProducts } from '@/lib/data/products';
@@ -34,6 +35,10 @@ export default async function HomePage() {
 
         <section className="page-shell-wrapper philosophy-wrapper">
           <Philosophy />
+        </section>
+
+        <section className="page-shell-wrapper testimonials-wrapper">
+          <Testimonials />
         </section>
 
         <Newsletter />
