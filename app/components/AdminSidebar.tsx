@@ -27,8 +27,9 @@ export default function AdminSidebar({
   return (
     <aside className="admin-sidebar">
       <div className="admin-brand">
-        <h2>Reesha.</h2>
-        <p>Admin Studio</p>
+        <img src="/images/logo_new.png" alt="Divine Ressha" className="admin-brand-logo" />
+        
+        <p> Admin Studio</p>
       </div>
 
       <nav className="admin-nav">
