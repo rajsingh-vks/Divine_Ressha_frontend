@@ -73,6 +73,7 @@ type RefundSummary = {
 type FilterTab = 'All' | 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 const STATUS_OPTIONS = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+const ORDERS_PER_PAGE = 3;
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
@@ -99,6 +100,7 @@ export default function AdminOrdersPanel() {
   const [fetchError, setFetchError] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterTab>('All');
+  const [currentPage, setCurrentPage] = useState(1);
   const [updatingOrderId, setUpdatingOrderId] = useState('');
   const [updatingRefundOrderId, setUpdatingRefundOrderId] = useState('');
   const [requestingReturnOrderId, setRequestingReturnOrderId] = useState('');
@@ -191,6 +193,26 @@ export default function AdminOrdersPanel() {
       }),
     [orders, search, filter]
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * ORDERS_PER_PAGE;
+    return filteredOrders.slice(start, start + ORDERS_PER_PAGE);
+  }, [filteredOrders, currentPage]);
+
+  const pageStart = filteredOrders.length === 0 ? 0 : (currentPage - 1) * ORDERS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * ORDERS_PER_PAGE, filteredOrders.length);
 
   const handleStatusChange = async (orderId: string, status: string) => {
     setUpdatingOrderId(orderId);
@@ -448,7 +470,7 @@ export default function AdminOrdersPanel() {
               </thead>
               <tbody>
                 {filteredOrders.length ? (
-                  filteredOrders.map((order) => (
+                  paginatedOrders.map((order) => (
                     <tr key={order.id}>
                       <td>
                         <div className="admin-order-cell">
@@ -553,6 +575,46 @@ export default function AdminOrdersPanel() {
               </tbody>
             </table>
           </div>
+
+          {filteredOrders.length ? (
+            <div className="admin-pagination">
+              <p className="admin-pagination-meta">
+                Showing {pageStart}–{pageEnd} of {filteredOrders.length} orders
+              </p>
+
+              <div className="admin-pagination-actions" aria-label="Orders pagination">
+                <button
+                  type="button"
+                  className="admin-row-button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Prev
+                </button>
+
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`admin-row-button${page === currentPage ? ' active' : ''}`}
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={page === currentPage ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  className="admin-row-button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ) : null}
         </main>
       </div>
 

@@ -502,6 +502,37 @@
   padding: 2.5rem 1rem !important;
 }
 
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.admin-pagination-meta {
+  margin: 0;
+  color: #6f6a60;
+  font-size: 0.82rem;
+}
+
+.admin-pagination-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.admin-row-button.active {
+  background: #131210;
+  color: #f5f1e7;
+  border-color: #131210;
+}
+
+.admin-row-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* ── Modal ─────────────────────────────────── */
 .admin-modal-overlay {
   position: fixed;
