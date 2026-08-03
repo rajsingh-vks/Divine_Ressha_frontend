@@ -26,6 +26,14 @@
   font-style: italic;
 }
 
+.admin-brand-logo {
+  width: 140px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
 .admin-brand p {
   margin: 0.25rem 0 0;
   letter-spacing: 0.22em;

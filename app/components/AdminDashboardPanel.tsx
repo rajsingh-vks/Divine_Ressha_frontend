@@ -16,10 +16,99 @@ type AdminUser = {
   role?: string;
 };
 
+type AdminFinancialBreakdown = {
+  total_earned: number;
+  total_refunded: number;
+  net_revenue: number;
+  total_orders: number;
+  total_refund_orders: number;
+  total_products: number;
+  total_customers: number;
+  currency: string;
+};
+
+const formatCurrencyByCode = (amount: number, currencyCode?: string) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: (currencyCode || 'INR').toUpperCase(),
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
+
+const formatNumber = (value: number) => new Intl.NumberFormat('en-IN').format(value || 0);
+
 export default function AdminDashboardPanel() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [financialBreakdown, setFinancialBreakdown] = useState<AdminFinancialBreakdown | null>(null);
+  const [financialLoading, setFinancialLoading] = useState(false);
+  const [financialError, setFinancialError] = useState('');
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem(ADMIN_AUTH_TOKEN_KEY);
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
+  };
+
+  const fetchFinancialBreakdown = async () => {
+    setFinancialLoading(true);
+    setFinancialError('');
+
+    try {
+      const endpoints = ['/api/orders/admin/financial-breakdown', '/api/orders/financial-breakdown'];
+      let payload: Partial<AdminFinancialBreakdown> | null = null;
+      let lastErrorMessage = 'Unable to fetch financial breakdown.';
+
+      for (const endpoint of endpoints) {
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          credentials: 'include',
+          headers: getAuthHeaders(),
+          cache: 'no-store',
+        });
+
+        if (response.ok) {
+          payload = (await response.json()) as Partial<AdminFinancialBreakdown>;
+          break;
+        }
+
+        try {
+          const errorPayload = (await response.json()) as { detail?: string; message?: string; error?: string };
+          lastErrorMessage = errorPayload.detail || errorPayload.message || errorPayload.error || lastErrorMessage;
+        } catch {
+          // ignore parse errors, keep previous message
+        }
+
+        if (response.status !== 404) {
+          break;
+        }
+      }
+
+      if (!payload) {
+        throw new Error(lastErrorMessage);
+      }
+
+      setFinancialBreakdown({
+        total_earned: Number(payload.total_earned || 0),
+        total_refunded: Number(payload.total_refunded || 0),
+        net_revenue: Number(payload.net_revenue || 0),
+        total_orders: Number(payload.total_orders || 0),
+        total_refund_orders: Number(payload.total_refund_orders || 0),
+        total_products: Number(payload.total_products || 0),
+        total_customers: Number(payload.total_customers || 0),
+        currency: String(payload.currency || 'INR'),
+      });
+    } catch (error) {
+      setFinancialError(error instanceof Error ? error.message : 'Unable to fetch financial breakdown.');
+      setFinancialBreakdown(null);
+    } finally {
+      setFinancialLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!ready) return;
+    void fetchFinancialBreakdown();
+  }, [ready]);
 
   useEffect(() => {
     const hasSession = localStorage.getItem(ADMIN_AUTH_SESSION_KEY) === '1';
@@ -111,26 +200,32 @@ export default function AdminDashboardPanel() {
 
           <section className="admin-stats-grid" aria-label="Store stats">
             <article className="admin-stat-card">
-              <p>Revenue</p>
-              <strong>₹48,290</strong>
-              <span>+12.4% this week</span>
+              <p>Total earned</p>
+              <strong>
+                {financialLoading
+                  ? '…'
+                  : formatCurrencyByCode(financialBreakdown?.total_earned || 0, financialBreakdown?.currency)}
+              </strong>
+              <span>{financialLoading ? 'Loading…' : `Net: ${formatCurrencyByCode(financialBreakdown?.net_revenue || 0, financialBreakdown?.currency)}`}</span>
             </article>
             <article className="admin-stat-card">
               <p>Orders</p>
-              <strong>1,284</strong>
-              <span>+3.1% this week</span>
+              <strong>{financialLoading ? '…' : formatNumber(financialBreakdown?.total_orders || 0)}</strong>
+              <span>{financialLoading ? 'Loading…' : `${formatNumber(financialBreakdown?.total_refund_orders || 0)} refund order(s)`}</span>
             </article>
             <article className="admin-stat-card">
               <p>Products</p>
-              <strong>312</strong>
-              <span>+8 this week</span>
+              <strong>{financialLoading ? '…' : formatNumber(financialBreakdown?.total_products || 0)}</strong>
+              <span>Across all orders</span>
             </article>
             <article className="admin-stat-card">
               <p>Customers</p>
-              <strong>4,921</strong>
-              <span>+64 this week</span>
+              <strong>{financialLoading ? '…' : formatNumber(financialBreakdown?.total_customers || 0)}</strong>
+              <span>Unique buyers</span>
             </article>
           </section>
+
+          {financialError ? <p className="admin-products-error">{financialError}</p> : null}
 
           <section className="admin-summary-row">
             <div className="admin-summary-card">
@@ -140,8 +235,8 @@ export default function AdminDashboardPanel() {
             </div>
             <div className="admin-summary-card">
               <h3>Today</h3>
-              <p>2 pending payouts</p>
-              <p>9 orders to dispatch</p>
+              <p>Total refunded: <strong>{formatCurrencyByCode(financialBreakdown?.total_refunded || 0, financialBreakdown?.currency)}</strong></p>
+              <p>Net revenue: <strong>{formatCurrencyByCode(financialBreakdown?.net_revenue || 0, financialBreakdown?.currency)}</strong></p>
             </div>
           </section>
         </main>
