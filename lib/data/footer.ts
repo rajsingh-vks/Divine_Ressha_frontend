@@ -38,7 +38,7 @@ export const footerGroups: FooterGroup[] = [
   {
     heading: 'FOLLOW',
     links: [
-      { label: 'INSTAGRAM', href: '#' },
+      { label: 'INSTAGRAM', href: 'https://www.instagram.com/divineressha?igsh=MWdkaXYyMHcwb2p6cA==' },
       { label: 'PINTEREST', href: '#' },
     ],
   },

@@ -1742,6 +1742,18 @@ img {
   transition: color 0.2s ease;
 }
 
+.footer-link-inline {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.footer-social-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .footer-group a:hover {
   color: #6d7669;
 }
