@@ -7,6 +7,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY } from '@/lib/constants/auth';
 import { useShopActions } from './ShopActionsProvider';
 import { proxyImageUrl } from '@/lib/utils/imageProxy';
+import { DISCOUNT_PERCENT, getDiscountAmount, getDiscountedPrice } from '@/lib/utils/pricing';
 
 type ShopItem = {
   id?: string;
@@ -156,7 +157,6 @@ const getProductId = (item: ShopItem) => String(item.product?.id ?? item.product
 const getItemName = (item: ShopItem) => item.product?.name || item.product?.title || item.title || item.name || 'Product item';
 const getItemImage = (item: ShopItem) => proxyImageUrl(item.product?.image_url, '/images/banner_main.jpeg');
 const getUnitPrice = (item: ShopItem) => Number(item.unit_price ?? item.product?.price ?? item.price ?? 0);
-const getLineTotal = (item: ShopItem) => (typeof item.line_total === 'number' ? item.line_total : getUnitPrice(item) * (item.quantity ?? 1));
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 
@@ -194,13 +194,19 @@ export default function CheckoutPanel() {
         name: getItemName(item),
         image: getItemImage(item),
         quantity: item.quantity ?? 1,
-        unitPrice: getUnitPrice(item),
-        lineTotal: getLineTotal(item),
+        originalUnitPrice: getUnitPrice(item),
+        unitPrice: getDiscountedPrice(getUnitPrice(item)),
+        lineTotal: getDiscountedPrice(getUnitPrice(item)) * (item.quantity ?? 1),
       })),
     [cartItems]
   );
 
   const subtotal = useMemo(() => rows.reduce((sum, row) => sum + row.lineTotal, 0), [rows]);
+  const originalSubtotal = useMemo(
+    () => rows.reduce((sum, row) => sum + row.originalUnitPrice * row.quantity, 0),
+    [rows]
+  );
+  const discount = useMemo(() => rows.reduce((sum, row) => sum + getDiscountAmount(row.originalUnitPrice) * row.quantity, 0), [rows]);
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId) || null;
 
   const loadAddresses = async () => {
@@ -771,6 +777,8 @@ export default function CheckoutPanel() {
           </ul>
 
           <div className="checkout-summary-lines">
+            <div><span>MRP</span><strong>{formatCurrency(originalSubtotal)}</strong></div>
+            <div className="checkout-discount"><span>Discount ({DISCOUNT_PERCENT}% off)</span><strong>−{formatCurrency(discount)}</strong></div>
             <div><span>Subtotal</span><strong>{formatCurrency(subtotal)}</strong></div>
             <div><span>Shipping</span><strong>Free</strong></div>
             <div className="total"><span>Total</span><strong>{formatCurrency(subtotal)}</strong></div>

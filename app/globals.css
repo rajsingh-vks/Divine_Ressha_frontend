@@ -1468,7 +1468,7 @@ img {
 }
 
 .philosophy-copy {
-  max-width: 720px;
+  max-width: 770px;
   margin: auto;
 }
 
@@ -3307,9 +3307,19 @@ img {
   line-height: 1;
 }
 
+.cart-item-price del {
+  color: #777;
+  font-size: 0.9rem;
+}
+
 .cart-item-price span {
   color: #6b6b6b;
   font-size: 0.9rem;
+}
+
+.cart-summary-discount strong,
+.checkout-discount strong {
+  color: #18733a;
 }
 
 .cart-item-footer {
