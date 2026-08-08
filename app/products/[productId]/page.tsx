@@ -4,8 +4,7 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ProductCardActions from '../../components/ProductCardActions';
 import { getProductDetails } from '@/lib/data/products';
-
-const DISCOUNT_PERCENT = 20;
+import { DISCOUNT_PERCENT, getDiscountedPrice } from '@/lib/utils/pricing';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -44,7 +43,7 @@ export default async function ProductDetailsPage({ params }: ProductDetailsPageP
     notFound();
   }
 
-  const discountedPrice = Math.round(product.price * (1 - DISCOUNT_PERCENT / 100));
+  const discountedPrice = getDiscountedPrice(product.price);
 
   return (
     <>

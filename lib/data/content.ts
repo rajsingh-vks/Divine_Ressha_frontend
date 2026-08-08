@@ -35,10 +35,10 @@ export const heroContent: HeroContent = {
 };
 
 export const overviewContent: OverviewContent = {
-  label: 'Maison Botanical Body Wash',
+  label: 'Maison Botanical Air Frsheners',
   title: 'Slow rituals with botanical fragrance.',
   description:
-    'One signature body wash, four fragrances, plant-derived cleansers and slow-made rituals for everyday care.',
+    'Our Signature Air Fresheners, four fragrances, plant-derived with steam distillation method and Hand-made rituals for everyday care.',
   priceTag: '₹38 · EACH',
 };
 
@@ -46,7 +46,7 @@ export const philosophyContent: PhilosophyContent = {
   label: 'OUR PHILOSOPHY',
   quote: '"The shower is where the day begins and ends. We made it smell like a garden."',
   description:
-    'Divine Ressha was born in a small apothecary, blending wildcrafted botanicals with plant-based cleansers. One body wash, four fragrances — each honest, traceable and made in small batches.',
+    'Divine Ressha was born in a small apothecary, blending wildcrafted botanicals with plant-based Air Fresheners. four fragrances n Pure Essential Oils— each honest, traceable and made in small batches.',
 };
 
 export const newsletterContent: NewsletterContent = {

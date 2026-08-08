@@ -1,12 +1,11 @@
 import Link from 'next/link';
 import ProductCardActions from './ProductCardActions';
 import type { Product } from '@/lib/data/products';
+import { DISCOUNT_PERCENT, getDiscountedPrice } from '@/lib/utils/pricing';
 
 interface ProductGridProps {
   products: Product[];
 }
-
-const DISCOUNT_PERCENT = 20;
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -19,7 +18,7 @@ export default function ProductGrid({ products }: ProductGridProps) {
   return (
     <section className="product-grid" id="shop">
       {products.map((product) => {
-        const discountedPrice = Math.round(product.price * (1 - DISCOUNT_PERCENT / 100));
+        const discountedPrice = getDiscountedPrice(product.price);
 
         return (
           <article className="product-card" key={product.id}>

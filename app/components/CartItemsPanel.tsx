@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useShopActions } from './ShopActionsProvider';
 import { useState } from 'react';
 import { proxyImageUrl } from '@/lib/utils/imageProxy';
+import { DISCOUNT_PERCENT, getDiscountAmount, getDiscountedPrice } from '@/lib/utils/pricing';
 
 type ShopItem = {
   id?: string;
@@ -37,11 +38,6 @@ const getItemImage = (item: ShopItem) => proxyImageUrl(item.product?.image_url, 
 
 const getUnitPrice = (item: ShopItem) => Number(item.unit_price ?? item.product?.price ?? item.price ?? 0);
 
-const getLineTotal = (item: ShopItem) => {
-  if (typeof item.line_total === 'number') return item.line_total;
-  return getUnitPrice(item) * (item.quantity ?? 1);
-};
-
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -69,8 +65,9 @@ export default function CartItemsPanel() {
           image: getItemImage(item),
           category: item.product?.category || 'Selected product',
           quantity: item.quantity ?? 1,
-          unitPrice: getUnitPrice(item),
-          lineTotal: getLineTotal(item),
+          originalUnitPrice: getUnitPrice(item),
+          unitPrice: getDiscountedPrice(getUnitPrice(item)),
+          lineTotal: getDiscountedPrice(getUnitPrice(item)) * (item.quantity ?? 1),
           stock: Number(item.product?.stock ?? stockByProductId[getProductId(item)] ?? 9999),
         };
       }),
@@ -116,6 +113,11 @@ export default function CartItemsPanel() {
   }, [rows.map((row) => row.productId).join('|')]);
 
   const subtotal = useMemo(() => rows.reduce((sum, row) => sum + row.lineTotal, 0), [rows]);
+  const originalSubtotal = useMemo(
+    () => rows.reduce((sum, row) => sum + row.originalUnitPrice * row.quantity, 0),
+    [rows]
+  );
+  const discount = useMemo(() => rows.reduce((sum, row) => sum + getDiscountAmount(row.originalUnitPrice) * row.quantity, 0), [rows]);
   const fees = rows.length ? 0 : 0;
   const totalAmount = subtotal + fees;
 
@@ -171,6 +173,7 @@ export default function CartItemsPanel() {
                       <p>{row.category}</p>
                       <div className="cart-item-price">
                         <strong>{formatCurrency(row.lineTotal)}</strong>
+                        <del>{formatCurrency(row.originalUnitPrice * row.quantity)}</del>
                         {row.quantity > 1 ? <span>{row.quantity} × {formatCurrency(row.unitPrice)}</span> : null}
                       </div>
                     </div>
@@ -221,7 +224,11 @@ export default function CartItemsPanel() {
 
             <div className="cart-summary-row">
               <span>MRP (incl. of all taxes)</span>
-              <strong>{formatCurrency(subtotal)}</strong>
+              <strong>{formatCurrency(originalSubtotal)}</strong>
+            </div>
+            <div className="cart-summary-row cart-summary-discount">
+              <span>Discount ({DISCOUNT_PERCENT}% off)</span>
+              <strong>−{formatCurrency(discount)}</strong>
             </div>
             <div className="cart-summary-row">
               <span>Delivery Fees</span>

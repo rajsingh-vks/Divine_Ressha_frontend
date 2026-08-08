@@ -26,7 +26,7 @@ export default function ContactPage() {
             </div>
             <div className="info-contact-item">
               <h2>Phone</h2>
-              <p>+91 95940 72215</p>
+              <p>+91 99307 35977</p>
             </div>
             <div className="info-contact-item">
               <h2>Business Hours</h2>
