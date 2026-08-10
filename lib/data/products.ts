@@ -8,6 +8,7 @@ export interface Product {
   notes: string;
   image: string;
   price: number;
+  images?: string[];
   description?: string;
 }
 
@@ -81,6 +82,7 @@ type BackendProduct = {
   sku?: string | null;
   status?: string | null;
   image_url?: string | null;
+  images?: string[] | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -127,12 +129,18 @@ const mapBackendProductToUi = (product: BackendProduct, index: number): ProductD
   const notesParts = [product.fragrance, product.pack_size, product.usage].filter(Boolean) as string[];
   const notes = notesParts.length ? notesParts.join(' · ') : 'Botanical blend';
 
+  const primaryImage = proxyImageUrl(product.image_url, products[index % products.length]?.image || products[0].image);
+  const galleryImages = Array.isArray(product.images)
+    ? product.images.filter((image): image is string => typeof image === 'string' && Boolean(image.trim())).map((image) => proxyImageUrl(image))
+    : [];
+
   return {
     id: String(product.id || product._id || index + 1),
     title: product.name || `Product ${index + 1}`,
     tag,
     notes,
-    image: proxyImageUrl(product.image_url, products[index % products.length]?.image || products[0].image),
+    image: primaryImage,
+    images: Array.from(new Set([primaryImage, ...galleryImages])),
     price: Number(product.price ?? 0),
     description: product.brand || undefined,
     category: product.category || undefined,
