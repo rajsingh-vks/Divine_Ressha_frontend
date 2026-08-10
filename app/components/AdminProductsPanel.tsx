@@ -27,6 +27,7 @@ type Product = {
   sku: string;
   status: 'Active' | 'Draft' | 'Archived';
   image_url: string;
+  images?: string[];
   created_at?: string;
   updated_at?: string;
 };
@@ -92,6 +93,14 @@ const getApiErrorMessage = (payload: ApiErrorPayload, fallback: string) => {
   return fallback;
 };
 
+const MAX_IMAGES = 5;
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+const getProductImages = (product: Product) => {
+  const images = Array.isArray(product.images) ? product.images.filter((image): image is string => typeof image === 'string' && Boolean(image.trim())) : [];
+  return images.length ? images : product.image_url ? [product.image_url] : [];
+};
+
 export default function AdminProductsPanel() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -105,8 +114,8 @@ export default function AdminProductsPanel() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +127,13 @@ export default function AdminProductsPanel() {
           Authorization: `Bearer ${token}`,
         }
       : undefined;
+  };
+
+  const handleUnauthorized = () => {
+    localStorage.removeItem(ADMIN_AUTH_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_AUTH_SESSION_KEY);
+    localStorage.removeItem(ADMIN_AUTH_USER_KEY);
+    router.replace('/admin/login');
   };
 
   const fetchProducts = async () => {
@@ -133,6 +149,11 @@ export default function AdminProductsPanel() {
       });
 
       const payload = (await response.json()) as ProductResponse | { detail?: string; message?: string };
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         const detail = 'detail' in payload ? payload.detail : undefined;
@@ -190,30 +211,44 @@ export default function AdminProductsPanel() {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const setImageFromFile = async (file: File) => {
-    const base64 = await readAsDataUrl(file);
-    setImageFile(file);
-    setImagePreview(base64);
-    setFormData((prev) => ({ ...prev, image_url: base64 }));
+  const clearImages = () => {
+    setSelectedFiles([]);
+    setImagePreviews([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const setImagesFromFiles = async (files: File[]) => {
+    const validFiles = files.filter((file) => file.type.startsWith('image/'));
+    if (validFiles.length !== files.length) {
+      setFetchError('Only image files can be uploaded.');
+      return;
+    }
+    if (validFiles.length > MAX_IMAGES) {
+      setFetchError(`You can upload a maximum of ${MAX_IMAGES} images.`);
+      return;
+    }
+    if (validFiles.some((file) => file.size > MAX_IMAGE_SIZE_BYTES)) {
+      setFetchError('Each image must be 5 MB or smaller.');
+      return;
+    }
+
+    try {
+      setFetchError('');
+      setSelectedFiles(validFiles);
+      setImagePreviews(await Promise.all(validFiles.map(readAsDataUrl)));
+    } catch {
+      setFetchError('Unable to preview the selected images.');
+    }
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await setImageFromFile(file);
-  };
-
-  const clearImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    setFormData((prev) => ({ ...prev, image_url: '' }));
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    await setImagesFromFiles(Array.from(e.target.files || []));
   };
 
   const openCreateModal = () => {
     setEditingProductId(null);
     setFormData({ ...EMPTY_FORM });
-    clearImage();
+    clearImages();
     setModalOpen(true);
   };
 
@@ -234,8 +269,8 @@ export default function AdminProductsPanel() {
       status: product.status,
       image_url: product.image_url || '',
     });
-    setImageFile(null);
-    setImagePreview(proxyImageUrl(product.image_url) || null);
+    setSelectedFiles([]);
+    setImagePreviews(getProductImages(product).map((image) => proxyImageUrl(image)));
     setModalOpen(true);
   };
 
@@ -243,7 +278,7 @@ export default function AdminProductsPanel() {
     setModalOpen(false);
     setEditingProductId(null);
     setFormData({ ...EMPTY_FORM });
-    clearImage();
+    clearImages();
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -264,7 +299,9 @@ export default function AdminProductsPanel() {
     if (formData.stock) payload.append('stock', String(Number(formData.stock)));
     if (formData.sku) payload.append('sku', formData.sku);
     if (formData.status) payload.append('status', formData.status);
-    if (imageFile) payload.append('image', imageFile);
+    selectedFiles.forEach((file) => {
+      payload.append('images', file);
+    });
 
     try {
       const response = await fetch(editingProductId ? `/api/admin/products/${editingProductId}` : '/api/admin/products', {
@@ -276,7 +313,12 @@ export default function AdminProductsPanel() {
         body: payload,
       });
 
-      const result = (await response.json()) as ApiErrorPayload;
+      const result = (await response.json()) as ApiErrorPayload & Partial<Product>;
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(getApiErrorMessage(result, 'Unable to save product.'));
@@ -463,31 +505,33 @@ export default function AdminProductsPanel() {
 
               {/* Image upload */}
               <div className="admin-form-image-section">
-                <span className="admin-form-image-label">Product Image</span>
+                <span className="admin-form-image-label">Product Gallery</span>
                 <div
-                  className={`admin-image-dropzone${imagePreview ? ' has-image' : ''}`}
+                  className={`admin-image-dropzone${imagePreviews.length ? ' has-image' : ''}`}
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
-                    const file = e.dataTransfer.files?.[0];
-                    if (file && file.type.startsWith('image/')) {
-                      setImageFromFile(file);
-                    }
+                    void setImagesFromFiles(Array.from(e.dataTransfer.files || []));
                   }}
                 >
-                  {imagePreview ? (
-                    <>
-                      <img src={imagePreview} alt="Preview" className="admin-image-preview" />
+                  {imagePreviews.length ? (
+                    <div className="admin-image-gallery-preview">
+                      {imagePreviews.map((image, index) => (
+                        <div key={`${image}-${index}`} className="admin-image-gallery-item">
+                          <img src={image} alt={`Product image ${index + 1}`} className="admin-image-preview" />
+                        </div>
+                      ))}
                       <button
                         type="button"
                         className="admin-image-remove"
-                        onClick={(e) => { e.stopPropagation(); clearImage(); }}
-                        aria-label="Remove image"
+                        onClick={(e) => { e.stopPropagation(); clearImages(); }}
+                        aria-label="Clear selected product images"
                       >
                         ✕
                       </button>
-                    </>
+                      {editingProductId && !selectedFiles.length ? <small className="admin-gallery-hint">Select new images to replace this gallery.</small> : null}
+                    </div>
                   ) : (
                     <div className="admin-image-placeholder">
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -495,17 +539,18 @@ export default function AdminProductsPanel() {
                         <circle cx="8.5" cy="8.5" r="1.5" />
                         <polyline points="21 15 16 10 5 21" />
                       </svg>
-                      <p>Click or drag &amp; drop to upload</p>
-                      <small>PNG, JPG, WEBP — max 5 MB</small>
+                      <p>Click or drag &amp; drop to upload up to 5 images</p>
+                      <small>PNG, JPG, WEBP — max 5 MB per image</small>
                     </div>
                   )}
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="admin-image-input"
                     onChange={handleImageChange}
-                    aria-label="Upload product image"
+                    aria-label="Upload product images"
                   />
                 </div>
               </div>
@@ -575,15 +620,6 @@ export default function AdminProductsPanel() {
                   </select>
                 </label>
 
-                <label className="admin-form-field admin-form-full">
-                  <span>Image URL (optional)</span>
-                  <input
-                    name="image_url"
-                    placeholder="https://example.com/product.jpg"
-                    value={formData.image_url}
-                    onChange={handleField}
-                  />
-                </label>
               </div>
 
               <div className="admin-modal-footer">

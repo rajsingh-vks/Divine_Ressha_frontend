@@ -654,6 +654,32 @@
   display: block;
 }
 
+.admin-image-gallery-preview {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding: 0.65rem;
+}
+
+.admin-image-gallery-item {
+  min-width: 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #eee9df;
+}
+
+.admin-image-gallery-item .admin-image-preview {
+  height: 100%;
+}
+
+.admin-gallery-hint {
+  grid-column: 1 / -1;
+  color: #6d675d;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
 .admin-image-remove {
   position: absolute;
   top: 8px;

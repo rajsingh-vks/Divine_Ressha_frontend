@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ProductCardActions from '../../components/ProductCardActions';
+import ProductImageGallery from '../../components/ProductImageGallery';
 import { getProductDetails } from '@/lib/data/products';
 import { DISCOUNT_PERCENT, getDiscountedPrice } from '@/lib/utils/pricing';
 
@@ -52,7 +53,7 @@ export default async function ProductDetailsPage({ params }: ProductDetailsPageP
       <main className="product-detail-shell">
         <section className="product-detail-card">
           <div className="product-detail-media">
-            <img src={product.image} alt={product.title} loading="lazy" />
+            <ProductImageGallery images={product.images?.length ? product.images : [product.image]} alt={product.title} />
           </div>
 
           <div className="product-detail-content">
