@@ -35,7 +35,7 @@ export default function Testimonials() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % testimonials.length);
-    }, 4500);
+    }, 5000);
 
     return () => window.clearInterval(interval);
   }, []);
@@ -48,6 +48,8 @@ export default function Testimonials() {
     setActiveIndex((prev) => (prev + 1) % testimonials.length);
   };
 
+  const activeTestimonial = testimonials[activeIndex];
+
   return (
     <section className="testimonials" aria-labelledby="testimonials-heading">
       <div className="testimonials-copy">
@@ -56,34 +58,41 @@ export default function Testimonials() {
       </div>
 
       <div className="testimonials-slider" role="region" aria-label="Customer testimonials slider">
-        <button type="button" className="testimonial-nav testimonial-nav-prev" onClick={goToPrev} aria-label="Previous testimonial">
+        <button
+          type="button"
+          className="testimonial-nav testimonial-nav-prev"
+          onClick={goToPrev}
+          aria-label="Previous testimonial"
+        >
           ‹
         </button>
 
-        <div className="testimonials-viewport">
-          <div
-            className="testimonials-track"
-            style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-          >
-            {testimonials.map((item) => (
-              <article className="testimonial-slide" key={item.id}>
-                <div className="testimonial-slide-image-wrap">
-                  <img src={item.image} alt={item.name} className="testimonial-slide-image" loading="lazy" />
-                </div>
+        <div className="testimonial-card">
+          <div className="testimonial-card-image-wrap">
+            <div className="testimonial-card-image-accent" aria-hidden="true" />
+            <img
+              src={activeTestimonial.image}
+              alt={activeTestimonial.name}
+              className="testimonial-card-image"
+              loading="lazy"
+            />
+          </div>
 
-                <div className="testimonial-slide-content">
-                  <p className="testimonial-quote">“{item.quote}”</p>
-                  <div className="testimonial-author">
-                    <strong>{item.name}</strong>
-                    <span>{item.meta}</span>
-                  </div>
-                </div>
-              </article>
-            ))}
+          <div className="testimonial-card-content">
+            <p className="testimonial-quote">“{activeTestimonial.quote}”</p>
+            <div className="testimonial-author">
+              <strong>{activeTestimonial.name}</strong>
+              <span>{activeTestimonial.meta}</span>
+            </div>
           </div>
         </div>
 
-        <button type="button" className="testimonial-nav testimonial-nav-next" onClick={goToNext} aria-label="Next testimonial">
+        <button
+          type="button"
+          className="testimonial-nav testimonial-nav-next"
+          onClick={goToNext}
+          aria-label="Next testimonial"
+        >
           ›
         </button>
       </div>

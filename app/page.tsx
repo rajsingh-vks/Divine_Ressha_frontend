@@ -41,7 +41,7 @@ export default async function HomePage() {
           <Testimonials />
         </section>
 
-        <Newsletter />
+        {/* <Newsletter /> */}
       </main>
 
       <Footer />
