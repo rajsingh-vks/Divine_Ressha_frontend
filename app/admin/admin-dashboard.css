@@ -667,6 +667,18 @@
   aspect-ratio: 1;
   overflow: hidden;
   background: #eee9df;
+  position: relative;
+  cursor: grab;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.admin-image-gallery-item:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.admin-image-gallery-item:hover {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 .admin-image-gallery-item .admin-image-preview {

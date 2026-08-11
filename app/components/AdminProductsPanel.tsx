@@ -48,6 +48,13 @@ type ProductForm = {
   image_url: string;
 };
 
+type ImageItem = {
+  id: string;
+  src: string;
+  source?: string;
+  file?: File;
+};
+
 const EMPTY_FORM: ProductForm = {
   name: '',
   category: '',
@@ -114,11 +121,12 @@ export default function AdminProductsPanel() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageItems, setImageItems] = useState<ImageItem[]>([]);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragItemIndex = useRef<number | null>(null);
+  const dragOverItemIndex = useRef<number | null>(null);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem(ADMIN_AUTH_TOKEN_KEY);
@@ -212,37 +220,91 @@ export default function AdminProductsPanel() {
   };
 
   const clearImages = () => {
-    setSelectedFiles([]);
-    setImagePreviews([]);
+    setImageItems([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const setImagesFromFiles = async (files: File[]) => {
+  const createImageItemsFromFiles = async (files: File[]) => {
     const validFiles = files.filter((file) => file.type.startsWith('image/'));
     if (validFiles.length !== files.length) {
       setFetchError('Only image files can be uploaded.');
-      return;
+      return null;
     }
     if (validFiles.length > MAX_IMAGES) {
       setFetchError(`You can upload a maximum of ${MAX_IMAGES} images.`);
-      return;
+      return null;
     }
     if (validFiles.some((file) => file.size > MAX_IMAGE_SIZE_BYTES)) {
       setFetchError('Each image must be 5 MB or smaller.');
-      return;
+      return null;
     }
 
     try {
       setFetchError('');
-      setSelectedFiles(validFiles);
-      setImagePreviews(await Promise.all(validFiles.map(readAsDataUrl)));
+      const previews = await Promise.all(validFiles.map(readAsDataUrl));
+      return previews.map((src, index) => ({
+        id: `${src}-${Date.now()}-${index}`,
+        src,
+        file: validFiles[index],
+      }));
     } catch {
       setFetchError('Unable to preview the selected images.');
+      return null;
+    }
+  };
+
+  const setImagesFromFiles = async (files: File[]) => {
+    const items = await createImageItemsFromFiles(files);
+    if (items) {
+      setImageItems(items);
     }
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     await setImagesFromFiles(Array.from(e.target.files || []));
+  };
+
+  const handleDragStart = (event: React.DragEvent<HTMLDivElement>, index: number) => {
+    dragItemIndex.current = index;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>, index: number) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    dragOverItemIndex.current = index;
+  };
+
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>, index: number) => {
+    event.preventDefault();
+    dragOverItemIndex.current = index;
+  };
+
+  const handleDragEnd = () => {
+    dragItemIndex.current = null;
+    dragOverItemIndex.current = null;
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const startIndex = dragItemIndex.current;
+    const overIndex = dragOverItemIndex.current;
+    if (startIndex === null || overIndex === null || startIndex === overIndex) {
+      dragItemIndex.current = null;
+      dragOverItemIndex.current = null;
+      return;
+    }
+
+    setImageItems((prev) => {
+      const nextItems = [...prev];
+      const [movedItem] = nextItems.splice(startIndex, 1);
+      nextItems.splice(overIndex, 0, movedItem);
+      return nextItems;
+    });
+
+    dragItemIndex.current = null;
+    dragOverItemIndex.current = null;
   };
 
   const openCreateModal = () => {
@@ -252,25 +314,30 @@ export default function AdminProductsPanel() {
     setModalOpen(true);
   };
 
+  const normalizeValue = (value: string | undefined | null) => value ?? '';
+
   const openEditModal = (product: Product) => {
     setEditingProductId(product.id);
     setFormData({
-      name: product.name,
-      category: product.category,
-      subcategory: product.subcategory,
-      brand: product.brand,
-      fragrance: product.fragrance,
-      pack_size: product.pack_size,
-      form: product.form,
-      usage: product.usage,
-      price: String(product.price),
-      stock: String(product.stock),
-      sku: product.sku,
-      status: product.status,
-      image_url: product.image_url || '',
+      name: normalizeValue(product.name),
+      category: normalizeValue(product.category),
+      subcategory: normalizeValue(product.subcategory),
+      brand: normalizeValue(product.brand),
+      fragrance: normalizeValue(product.fragrance),
+      pack_size: normalizeValue(product.pack_size),
+      form: normalizeValue(product.form),
+      usage: normalizeValue(product.usage),
+      price: normalizeValue(String(product.price)),
+      stock: normalizeValue(String(product.stock)),
+      sku: normalizeValue(product.sku),
+      status: normalizeValue(product.status) as ProductForm['status'],
+      image_url: normalizeValue(product.image_url),
     });
-    setSelectedFiles([]);
-    setImagePreviews(getProductImages(product).map((image) => proxyImageUrl(image)));
+    setImageItems(getProductImages(product).map((image, index) => ({
+      id: `${image}-${index}`,
+      src: proxyImageUrl(image),
+      source: image,
+    })));
     setModalOpen(true);
   };
 
@@ -299,9 +366,44 @@ export default function AdminProductsPanel() {
     if (formData.stock) payload.append('stock', String(Number(formData.stock)));
     if (formData.sku) payload.append('sku', formData.sku);
     if (formData.status) payload.append('status', formData.status);
-    selectedFiles.forEach((file) => {
-      payload.append('images', file);
-    });
+
+    const buildUploadFiles = async () => {
+      return Promise.all(
+        imageItems.map(async (item, index) => {
+          if (item.file) {
+            return item.file;
+          }
+
+          const response = await fetch(item.src);
+          if (!response.ok) {
+            throw new Error('Unable to load existing product image for update.');
+          }
+          const blob = await response.blob();
+          const extension = blob.type.split('/')[1] || 'jpeg';
+          return new File([blob], `product-image-${index + 1}.${extension}`, {
+            type: blob.type || 'image/jpeg',
+          });
+        })
+      );
+    };
+
+    try {
+      const uploadFiles = await buildUploadFiles();
+      uploadFiles.forEach((file) => {
+        payload.append('images', file);
+      });
+    } catch (uploadError) {
+      setFetchError(uploadError instanceof Error ? uploadError.message : 'Unable to prepare product images.');
+      setSaving(false);
+      return;
+    }
+
+    if (imageItems.length > 0) {
+      const firstSource = imageItems.find((item) => item.source)?.source;
+      if (firstSource) {
+        payload.append('image_url', firstSource);
+      }
+    }
 
     try {
       const response = await fetch(editingProductId ? `/api/admin/products/${editingProductId}` : '/api/admin/products', {
@@ -507,19 +609,31 @@ export default function AdminProductsPanel() {
               <div className="admin-form-image-section">
                 <span className="admin-form-image-label">Product Gallery</span>
                 <div
-                  className={`admin-image-dropzone${imagePreviews.length ? ' has-image' : ''}`}
+                  className={`admin-image-dropzone${imageItems.length ? ' has-image' : ''}`}
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
-                    void setImagesFromFiles(Array.from(e.dataTransfer.files || []));
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      void setImagesFromFiles(Array.from(e.dataTransfer.files));
+                    }
                   }}
                 >
-                  {imagePreviews.length ? (
+                  {imageItems.length ? (
                     <div className="admin-image-gallery-preview">
-                      {imagePreviews.map((image, index) => (
-                        <div key={`${image}-${index}`} className="admin-image-gallery-item">
-                          <img src={image} alt={`Product image ${index + 1}`} className="admin-image-preview" />
+                      {imageItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="admin-image-gallery-item"
+                          draggable
+                          onDragStart={(event) => handleDragStart(event, index)}
+                          onDragEnter={(event) => { event.stopPropagation(); handleDragEnter(event, index); }}
+                          onDragOver={(event) => { event.stopPropagation(); handleDragOver(event, index); }}
+                          onDragEnd={(event) => { event.stopPropagation(); handleDragEnd(); }}
+                          onDrop={(event) => { event.stopPropagation(); handleDrop(event); }}
+                          aria-label={`Drag image ${index + 1} to reorder`}
+                        >
+                          <img src={item.src} alt={`Product image ${index + 1}`} className="admin-image-preview" />
                         </div>
                       ))}
                       <button
@@ -530,7 +644,9 @@ export default function AdminProductsPanel() {
                       >
                         ✕
                       </button>
-                      {editingProductId && !selectedFiles.length ? <small className="admin-gallery-hint">Select new images to replace this gallery.</small> : null}
+                      {editingProductId && imageItems.length > 0 && imageItems.every((item) => !item.file) ? (
+                        <small className="admin-gallery-hint">Select new images to replace this gallery.</small>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="admin-image-placeholder">
