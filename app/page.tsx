@@ -3,6 +3,7 @@ import Hero from './components/Hero';
 import RitualShowcase from './components/RitualShowcase';
 import Overview from './components/Overview';
 import ProductGrid from './components/ProductGrid';
+import WhereToUse from './components/WhereToUse';
 import Features from './components/Features';
 import Philosophy from './components/Philosophy';
 import Testimonials from './components/Testimonials';
@@ -22,7 +23,7 @@ export default async function HomePage() {
 
       <main>
         <Hero />
-        <RitualShowcase />
+        <WhereToUse />
 
         <section className='page-shell-wrapper'>
           <Overview />
@@ -32,6 +33,8 @@ export default async function HomePage() {
         <section className="page-shell">
           <Features />
         </section>
+
+        <RitualShowcase />
 
         <section className="page-shell-wrapper philosophy-wrapper">
           <Philosophy />
