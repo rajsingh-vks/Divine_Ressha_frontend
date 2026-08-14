@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import ProductGrid from '../components/ProductGrid';
+import ProductsPageClient from '../components/ProductsPageClient';
 import { getProducts } from '@/lib/data/products';
 
 export const metadata: Metadata = {
@@ -17,14 +17,7 @@ export default async function ProductsPage() {
     return (
         <>
             <Header />
-
-            <main>
-
-                <section className="page-shell-wrapper">
-                    <ProductGrid products={products} />
-                </section>
-            </main>
-
+            <ProductsPageClient products={products} />
             <Footer />
         </>
     );

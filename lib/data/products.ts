@@ -10,6 +10,14 @@ export interface Product {
   price: number;
   images?: string[];
   description?: string;
+  category?: string;
+  subcategory?: string;
+  brand?: string;
+  fragrance?: string;
+  packSize?: string;
+  form?: string;
+  usage?: string;
+  stock?: number;
 }
 
 export interface ProductDetail extends Product {

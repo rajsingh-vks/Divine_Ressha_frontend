@@ -27,7 +27,7 @@ export default async function HomePage() {
 
         <section className='page-shell-wrapper'>
           <Overview />
-          <ProductGrid products={products} />
+          <ProductGrid products={products} variant="home" />
         </section>
 
         <section className="page-shell">
