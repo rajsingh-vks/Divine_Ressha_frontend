@@ -124,11 +124,31 @@ img {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #1a1a1a;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  position: relative;
 }
 
-.site-nav a:hover {
-  color: #4b5563;
+.site-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -0.4rem;
+  width: 100%;
+  height: 1.5px;
+  background: #1a1a1a;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.2s ease;
+}
+
+.site-nav a:hover,
+.site-nav a.active {
+  color: #1a1a1a;
+}
+
+.site-nav a:hover::after,
+.site-nav a.active::after {
+  transform: scaleX(1);
 }
 
 .header-actions {
@@ -1444,9 +1464,9 @@ img {
 }
 
 .products-page-shell .price-discount {
-  border: 1px solid rgba(47, 43, 42, 0.12);
-  background: rgba(255, 255, 255, 0.3);
-  color: #7f5b2a;
+  border: 1px solid rgba(18, 122, 79, 0.38);
+  background: rgba(18, 122, 79, 0.08);
+  color: #127a4f;
   padding: 0.2rem 0.4rem;
   font-size: 0.62rem;
   letter-spacing: 0.16em;
@@ -1939,8 +1959,7 @@ img {
 .product-grid-home .product-title {
   margin: 0 0 0.55rem;
   color: #2d2422;
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(1.2rem, 1.8vw, 1.7rem);
+  font-size: clamp(1.2rem, 1.2vw, 1.7rem);
   line-height: 1.18;
   letter-spacing: -0.04em;
   font-weight: 500;
@@ -1988,9 +2007,9 @@ img {
 }
 
 .product-grid-home .price-discount {
-  border: 1px solid rgba(46, 42, 40, 0.1);
-  background: rgba(255, 255, 255, 0.3);
-  color: #7f5b2a;
+  border: 1px solid rgba(18, 122, 79, 0.38);
+  background: rgba(18, 122, 79, 0.08);
+  color: #127a4f;
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
   font-size: 0.62rem;
