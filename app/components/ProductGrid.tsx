@@ -5,6 +5,7 @@ import { DISCOUNT_PERCENT, getDiscountedPrice } from '@/lib/utils/pricing';
 
 interface ProductGridProps {
   products: Product[];
+  variant?: 'home' | 'catalog';
 }
 
 const formatCurrency = (value: number) =>
@@ -14,14 +15,17 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
-export default function ProductGrid({ products }: ProductGridProps) {
+export default function ProductGrid({ products, variant = 'catalog' }: ProductGridProps) {
+  const isHome = variant === 'home';
+
   return (
-    <section className="product-grid" id="shop">
+    <section className={isHome ? 'product-grid product-grid-home' : 'product-grid'} id="shop">
       {products.map((product) => {
         const discountedPrice = getDiscountedPrice(product.price);
 
         return (
-          <article className="product-card" key={product.id}>
+          <article className={isHome ? 'product-card product-card-home' : 'product-card'} key={product.id}>
+            <div className="product-card-badge">Bestseller</div>
             <ProductCardActions product={product} />
             <Link href={`/products/${encodeURIComponent(product.id)}`} className="product-image-link" aria-label={`View ${product.title}`}>
               <div className="product-image">
@@ -34,14 +38,11 @@ export default function ProductGrid({ products }: ProductGridProps) {
               </p>
               <p className="product-tag">{product.tag}</p>
               <p className="product-notes">{product.notes}</p>
-              <p className="price-tag">
+              <div className="product-price-row">
                 <span className="price-current">{formatCurrency(discountedPrice)}</span>
                 <span className="price-original">{formatCurrency(product.price)}</span>
-                <span className="price-discount">{DISCOUNT_PERCENT}% OFF</span>
-              </p>
-              <Link href={`/products/${encodeURIComponent(product.id)}`} className="product-detail-link">
-                View details
-              </Link>
+                <span className="price-discount">{DISCOUNT_PERCENT}% off</span>
+              </div>
             </div>
           </article>
         );
