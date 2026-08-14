@@ -4,7 +4,8 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ProductCardActions from '../../components/ProductCardActions';
 import ProductImageGallery from '../../components/ProductImageGallery';
-import { getProductDetails } from '@/lib/data/products';
+import ProductGrid from '../../components/ProductGrid';
+import { getProductDetails, getProducts } from '@/lib/data/products';
 import { DISCOUNT_PERCENT, getDiscountedPrice } from '@/lib/utils/pricing';
 
 const formatCurrency = (value: number) =>
@@ -44,6 +45,8 @@ export default async function ProductDetailsPage({ params }: ProductDetailsPageP
     notFound();
   }
 
+  const allProducts = await getProducts();
+  const relatedProducts = allProducts.filter((item) => item.id !== product.id).slice(0, 4);
   const discountedPrice = getDiscountedPrice(product.price);
 
   return (
@@ -87,6 +90,15 @@ export default async function ProductDetailsPage({ params }: ProductDetailsPageP
             </div>
           </div>
         </section>
+
+        {relatedProducts.length > 0 ? (
+          <section className="related-products">
+            <div className="related-products-header">
+              <h2>More products</h2>
+            </div>
+            <ProductGrid products={relatedProducts} variant="home" />
+          </section>
+        ) : null}
       </main>
 
       <Footer />
