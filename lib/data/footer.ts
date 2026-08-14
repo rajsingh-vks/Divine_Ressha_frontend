@@ -12,24 +12,18 @@ export const footerGroups: FooterGroup[] = [
   {
     heading: 'SHOP',
     links: [
-      { label: 'BODY WASH', href: '#shop' },
-      { label: 'SOAP BARS', href: '#shop' },
-      { label: 'GIFT SETS', href: '#shop' },
+      { label: 'Air Frsheners', href: '/products' },
     ],
   },
   {
     heading: 'ABOUT',
     links: [
-      { label: 'OUR STORY', href: '/about' },
-      { label: 'INGREDIENTS', href: '#ritual' },
-      { label: 'SUSTAINABILITY', href: '#ritual' },
+      { label: 'OUR STORY', href: '/about' }
     ],
   },
   {
     heading: 'SUPPORT',
     links: [
-      { label: 'SHIPPING', href: '#' },
-      { label: 'RETURNS', href: '#' },
       { label: 'CONTACT', href: '/contact' },
       { label: 'PRIVACY POLICY', href: '/privacy-policy' },
       { label: 'TERMS & CONDITIONS', href: '/terms-conditions' },
@@ -38,8 +32,7 @@ export const footerGroups: FooterGroup[] = [
   {
     heading: 'FOLLOW',
     links: [
-      { label: 'INSTAGRAM', href: 'https://www.instagram.com/divineressha?igsh=MWdkaXYyMHcwb2p6cA==' },
-      { label: 'PINTEREST', href: '#' },
+      { label: 'INSTAGRAM', href: 'https://www.instagram.com/divineressha?igsh=MWdkaXYyMHcwb2p6cA==' }
     ],
   },
 ];
