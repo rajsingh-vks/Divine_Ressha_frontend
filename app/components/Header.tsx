@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { navigationLinks, brandName, headerText } from '@/lib/data/navigation';
 import Link from 'next/link';
 import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
@@ -15,6 +15,15 @@ export default function Header() {
   const [profileName, setProfileName] = useState('Profile');
   const { cartCount, wishlistCount } = useShopActions();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const isNavActive = (href: string) => {
+    if (href === '/') {
+      return pathname === '/';
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   useEffect(() => {
     const syncAuthState = () => {
@@ -75,7 +84,11 @@ export default function Header() {
       {/* Desktop Navigation */}
       <nav className="site-nav desktop-nav">
         {navigationLinks.map((link) => (
-          <Link key={link.href} href={link.href}>
+          <Link
+            key={link.href}
+            href={link.href}
+            className={isNavActive(link.href) ? 'active' : ''}
+          >
             {link.label}
           </Link>
         ))}
@@ -172,6 +185,7 @@ export default function Header() {
             key={link.href}
             href={link.href}
             onClick={() => setMenuOpen(false)}
+            className={isNavActive(link.href) ? 'active' : ''}
           >
             {link.label}
           </Link>
