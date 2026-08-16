@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY, clearStoredAuth, hasStoredAuth } from '@/lib/constants/auth';
 import type { Product } from '@/lib/data/products';
 
 type ShopActionsContextValue = {
@@ -62,7 +62,7 @@ const readToken = () => {
   return token;
 };
 
-const hasSession = () => (typeof window !== 'undefined' && localStorage.getItem(AUTH_SESSION_KEY) === '1');
+const hasSession = () => hasStoredAuth();
 
 const extractErrorMessage = async (response: Response, fallback: string) => {
   try {
@@ -73,7 +73,7 @@ const extractErrorMessage = async (response: Response, fallback: string) => {
   }
 };
 
-const isAuthenticated = () => Boolean(readToken()) || hasSession();
+const isAuthenticated = () => Boolean(readToken()) && hasSession();
 
 const readGuestItems = (key: string) => {
   if (typeof window === 'undefined') return [] as ShopItem[];
@@ -198,8 +198,8 @@ export function ShopActionsProvider({ children }: { children: React.ReactNode })
     });
 
     if (response.status === 401) {
-      // Keep auth state intact here. Cart/wishlist can be unauthorized independently,
-      // and clearing auth on these endpoints can force users back to login after a successful sign-in.
+      clearStoredAuth();
+      window.dispatchEvent(new Event('auth-change'));
       return [];
     }
 

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY } from '@/lib/constants/auth';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, hasStoredAuth } from '@/lib/constants/auth';
 import { proxyImageUrl } from '@/lib/utils/imageProxy';
 
 type OrderItem = {
@@ -73,8 +73,7 @@ type TrackingPreviewState = {
 };
 
 const readToken = () => (typeof window === 'undefined' ? '' : localStorage.getItem(AUTH_TOKEN_KEY) || '');
-const hasSession = () => typeof window !== 'undefined' && localStorage.getItem(AUTH_SESSION_KEY) === '1';
-const isAuthenticated = () => Boolean(readToken()) || hasSession();
+const isAuthenticated = () => hasStoredAuth();
 const getAuthHeaders = () => {
   const token = readToken();
   return token ? { Authorization: `Bearer ${token}` } : undefined;

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
-import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY } from '@/lib/constants/auth';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, hasStoredAuth } from '@/lib/constants/auth';
 import { useShopActions } from './ShopActionsProvider';
 import { proxyImageUrl } from '@/lib/utils/imageProxy';
 import { DISCOUNT_PERCENT, getDiscountAmount, getDiscountedPrice } from '@/lib/utils/pricing';
@@ -132,8 +132,7 @@ const EMPTY_ADDRESS_FORM: AddressFormState = {
 };
 
 const readToken = () => (typeof window === 'undefined' ? '' : localStorage.getItem(AUTH_TOKEN_KEY) || '');
-const hasSession = () => typeof window !== 'undefined' && localStorage.getItem(AUTH_SESSION_KEY) === '1';
-const isAuthenticated = () => Boolean(readToken()) || hasSession();
+const isAuthenticated = () => hasStoredAuth();
 
 const getAuthHeaders = () => {
   const token = readToken();

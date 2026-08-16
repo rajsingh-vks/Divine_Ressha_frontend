@@ -48,3 +48,34 @@ export const AUTH_SESSION_KEY = 'divine_ressha_auth_session';
 export const ADMIN_AUTH_TOKEN_KEY = 'divine_ressha_admin_auth_token';
 export const ADMIN_AUTH_USER_KEY = 'divine_ressha_admin_auth_user';
 export const ADMIN_AUTH_SESSION_KEY = 'divine_ressha_admin_auth_session';
+
+export const clearStoredAuth = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_SESSION_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+};
+
+export const hasStoredAuth = () => {
+  if (typeof window === 'undefined') return false;
+
+  const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
+  const hasSession = localStorage.getItem(AUTH_SESSION_KEY) === '1';
+  const hasUser = Boolean(localStorage.getItem(AUTH_USER_KEY));
+
+  if (!token || token === 'authenticated') {
+    if (hasSession || hasUser) {
+      clearStoredAuth();
+    }
+    return false;
+  }
+
+  return true;
+};
+
+export const getStoredAuthHeaders = () => {
+  if (typeof window === 'undefined') return {} as Record<string, string>;
+
+  const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
+  return token && token !== 'authenticated' ? { Authorization: `Bearer ${token}` } : {};
+};
