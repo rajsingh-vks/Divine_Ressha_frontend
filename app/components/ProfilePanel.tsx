@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
-import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY, clearStoredAuth, hasStoredAuth } from '@/lib/constants/auth';
 import { proxyImageUrl } from '@/lib/utils/imageProxy';
 import OrdersPanel from './OrdersPanel';
 
@@ -105,8 +105,7 @@ type ProfilePanelProps = {
 };
 
 const readToken = () => (typeof window === 'undefined' ? '' : localStorage.getItem(AUTH_TOKEN_KEY) || '');
-const hasSession = () => typeof window !== 'undefined' && localStorage.getItem(AUTH_SESSION_KEY) === '1';
-const isAuthenticated = () => Boolean(readToken()) || hasSession();
+const isAuthenticated = () => hasStoredAuth();
 
 const getAuthHeaders = () => {
   const token = readToken();
@@ -183,6 +182,14 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
           headers: getAuthHeaders(),
           cache: 'no-store',
         });
+
+        if (response.status === 401) {
+          clearStoredAuth();
+          setProfile(null);
+          setError('Session expired. Please log in again.');
+          setLoading(false);
+          return;
+        }
 
         if (!response.ok) {
           throw new Error('Unable to load profile details.');

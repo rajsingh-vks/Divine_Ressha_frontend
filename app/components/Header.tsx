@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { navigationLinks, brandName, headerText } from '@/lib/data/navigation';
 import Link from 'next/link';
-import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY, hasStoredAuth } from '@/lib/constants/auth';
 import { useShopActions } from './ShopActionsProvider';
 
 export default function Header() {
@@ -31,7 +31,14 @@ export default function Header() {
       const session = localStorage.getItem(AUTH_SESSION_KEY) === '1';
       const user = localStorage.getItem(AUTH_USER_KEY);
 
-      setIsAuthenticated(Boolean(token) || session);
+      const authValid = Boolean(token) && (token !== 'authenticated') && (session || Boolean(user));
+      setIsAuthenticated(authValid);
+
+      if (!authValid && (session || user)) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(AUTH_SESSION_KEY);
+        localStorage.removeItem(AUTH_USER_KEY);
+      }
 
       if (user) {
         try {

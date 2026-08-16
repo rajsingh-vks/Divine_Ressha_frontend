@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '@/lib/constants/auth';
+import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY, hasStoredAuth } from '@/lib/constants/auth';
 
 type AuthMode = 'login' | 'signup';
 
@@ -76,10 +76,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const isSignup = mode === 'signup';
 
   useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      (localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(AUTH_SESSION_KEY) === '1')
-    ) {
+    if (typeof window !== 'undefined' && hasStoredAuth()) {
       router.replace('/profile');
     }
   }, [mode, router]);
