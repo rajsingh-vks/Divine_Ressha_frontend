@@ -5264,6 +5264,31 @@ img {
   color: #111;
 }
 
+.wishlist-move-to-cart-btn {
+  border: 1px solid #d6bb67;
+  background: linear-gradient(180deg, #f7df8d 0%, #e8c75d 100%);
+  color: #1b1b1b;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  min-width: 150px;
+  padding: 0.8rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(199, 165, 63, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.wishlist-move-to-cart-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(199, 165, 63, 0.28);
+  filter: brightness(1.02);
+}
+
+.wishlist-move-to-cart-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .cart-summary-column {
   display: grid;
   gap: 0.9rem;
