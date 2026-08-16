@@ -4289,9 +4289,9 @@ img {
 }
 
 .profile-account-shell {
-  width: min(1280px, calc(100% - 2rem));
+  /* width: min(1280px, calc(100% - 2rem)); */
   margin: 0 auto;
-  padding: 2rem 0 4rem;
+  padding: 2rem 2rem;
 }
 
 .profile-account-layout {

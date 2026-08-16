@@ -560,14 +560,14 @@ export default function OrdersPanel() {
                   >
                     {trackActionOrderId === order.id ? 'Loading…' : 'Track'}
                   </button>
-                  <button
+                  {/* <button
                     type="button"
                     className="checkout-link-button"
                     onClick={() => handleResendConfirmation(order.id, order.order_number)}
                     disabled={confirmationActionOrderId === order.id}
                   >
                     {confirmationActionOrderId === order.id ? 'Sending…' : 'Send confirmation'}
-                  </button>
+                  </button> */}
                   {cancellable ? (
                     <button type="button" className="checkout-secondary-button" onClick={() => openCancelModal(order)} disabled={actionOrderId === order.id}>
                       {actionOrderId === order.id ? 'Cancelling…' : 'Cancel order'}
