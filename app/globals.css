@@ -397,6 +397,76 @@ img {
   padding: 1.5rem;
 }
 
+.order-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.order-card.expanded {
+  border-color: rgba(122, 92, 53, 0.2);
+  box-shadow: 0 20px 42px rgba(28, 24, 18, 0.08);
+}
+
+.order-card-toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 1.5rem;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.order-card-toggle.expanded {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.order-card-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.order-card-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #eee7dd;
+  flex-shrink: 0;
+}
+
+.order-card-head p {
+  margin-bottom: 0px;
+}
+
+.order-card-body {
+  padding: 0 1.5rem 1.5rem;
+  display: grid;
+  gap: 1rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.order-card-body strong {
+  font-size: 0.94rem;
+}
+
+.order-card-body small,
+.order-card-body span,
+.order-card-body p,
+.order-card-body .order-note,
+.order-card-body .order-shipping-box small,
+.order-card-body .order-item-row small,
+.order-card-body .order-status-history li small {
+  font-size: 0.82rem;
+}
+
+.order-card-body.closed {
+  display: none !important;
+}
+
 .checkout-heading,
 .orders-page-head,
 .checkout-section-head,
@@ -416,12 +486,32 @@ img {
   color: #8f8473;
 }
 
+.order-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.order-card-chevron {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(122, 92, 53, 0.08);
+  color: #5d4635;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
 .checkout-heading h1,
 .orders-page-head h1 {
   /* margin: 0; */
   font-family: 'Playfair Display', serif;
   font-style: italic;
   font-size: clamp(2rem, 4vw, 2rem);
+  margin-bottom: 0px;
 }
 
 .checkout-link-button,
@@ -772,9 +862,8 @@ img {
 .checkout-summary-lines > div,
 .order-meta-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.75rem;
-      grid-template-columns: 1fr auto;
 }
 
 .checkout-summary-lines .total {
