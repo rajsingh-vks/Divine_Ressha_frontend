@@ -120,6 +120,7 @@ export default function OrdersPanel() {
   const [cancelImages, setCancelImages] = useState<File[]>([]);
   const [placedNotice, setPlacedNotice] = useState('');
   const [actionNotice, setActionNotice] = useState('');
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [trackingPreview, setTrackingPreview] = useState<TrackingPreviewState | null>(null);
 
   useEffect(() => {
@@ -412,177 +413,204 @@ export default function OrdersPanel() {
             const paymentStatus = (order.payment_status || 'unknown').toLowerCase();
             const cancellationReason = order.cancel_reason || order.cancellation_reason;
             const refundVisible =
-              Boolean(order.refund_status) ||
-              paymentStatus === 'paid' ||
-              Boolean(order.refund_amount) ||
-              Boolean(order.refund_requested_at) ||
-              Boolean(order.refunded_at) ||
-              order.status.toLowerCase() === 'cancelled';
+              order.status.toLowerCase() === 'cancelled' &&
+              (Boolean(order.refund_status) ||
+                paymentStatus === 'paid' ||
+                Boolean(order.refund_amount) ||
+                Boolean(order.refund_requested_at) ||
+                Boolean(order.refunded_at));
+            const isExpanded = expandedOrderId === order.id;
 
             return (
-              <article key={order.id} className="order-card">
-                <div className="order-card-head">
-                  <div>
-                    <strong>{order.order_number}</strong>
-                    <p>Placed {formatDate(order.created_at)}</p>
-                  </div>
-                  <span className={statusClassName(order.status)}>{order.status}</span>
-                </div>
-
-                <div className="order-meta-grid">
-                  <div>
-                    <span>Items</span>
-                    <strong>{order.total_items}</strong>
-                  </div>
-                  <div>
-                    <span>Total</span>
-                    <strong>{formatCurrency(order.subtotal)}</strong>
-                  </div>
-                  <div>
-                    <span>Delivery</span>
-                    <strong>{order.shipping_address.address_type}</strong>
-                  </div>
-                  <div>
-                    <span>Payment</span>
-                    <strong>{prettyValue(order.payment_status)}</strong>
-                  </div>
-                  <div>
-                    <span>Return</span>
-                    <strong>
-                      {order.status.toLowerCase() === 'cancelled' && !order.return_status
-                        ? 'N/A'
-                        : prettyValue(order.return_status || 'not requested')}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>Refund</span>
-                    <strong>{prettyValue(order.refund_status || 'not required')}</strong>
-                  </div>
-                </div>
-
-                <div className="order-shipping-box">
-                  <h3>Shipping address</h3>
-                  <p>{order.shipping_address.full_name}</p>
-                  <small>{addressText(order.shipping_address)} · {order.shipping_address.phone}</small>
-                </div>
-
-                <ul className="order-items-list">
-                  {order.items.map((item) => (
-                    <li key={`${order.id}-${item.product_id}`} className="order-item-row">
-                      <img src={proxyImageUrl(item.image_url, '/images/banner_main.jpeg')} alt={item.name} className="order-item-thumb" />
+              <article key={order.id} className={`order-card${isExpanded ? ' expanded' : ''}`}>
+                <button
+                  type="button"
+                  className={`order-card-toggle${isExpanded ? ' expanded' : ''}`}
+                  onClick={() => setExpandedOrderId((current) => (current === order.id ? null : order.id))}
+                  aria-expanded={isExpanded}
+                  aria-controls={`order-panel-${order.id}`}
+                >
+                  <div className="order-card-head">
+                    <div className="order-card-summary">
+                      {order.items[0] ? (
+                        <img
+                          src={proxyImageUrl(order.items[0].image_url, '/images/banner_main.jpeg')}
+                          alt={order.items[0].name}
+                          className="order-card-thumb"
+                        />
+                      ) : null}
                       <div>
-                        <strong>{item.name}</strong>
-                        <small>Qty {item.quantity} × {formatCurrency(Number(item.unit_price || 0))}</small>
+                        <strong>{order.order_number}</strong>
+                        <p>Placed {formatDate(order.created_at)}</p>
                       </div>
-                      <span>{formatCurrency(Number(item.line_total || Number(item.unit_price || 0) * item.quantity))}</span>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                    <div className="order-card-meta">
+                      <span className={statusClassName(order.status)}>{order.status}</span>
+                      <span className="order-card-chevron" aria-hidden="true">{isExpanded ? '−' : '+'}</span>
+                    </div>
+                  </div>
+                </button>
 
-                {order.notes ? <p className="order-note">Note: {order.notes}</p> : null}
-                {cancellationReason ? <p className="order-note cancel">Cancel reason: {cancellationReason}</p> : null}
+                <div
+                  id={`order-panel-${order.id}`}
+                  className={`order-card-body${isExpanded ? ' open' : ' closed'}`}
+                  style={isExpanded ? undefined : { display: 'none' }}
+                >
+                  <div className="order-meta-grid">
+                    <div>
+                      <span>Items</span>
+                      <strong>{order.total_items}</strong>
+                    </div>
+                    <div>
+                      <span>Total</span>
+                      <strong>{formatCurrency(order.subtotal)}</strong>
+                    </div>
+                    <div>
+                      <span>Delivery</span>
+                      <strong>{order.shipping_address.address_type}</strong>
+                    </div>
+                    <div>
+                      <span>Payment</span>
+                      <strong>{prettyValue(order.payment_status)}</strong>
+                    </div>
+                    <div>
+                      <span>Return</span>
+                      <strong>
+                        {order.status.toLowerCase() === 'cancelled' && !order.return_status
+                          ? 'N/A'
+                          : prettyValue(order.return_status || 'not requested')}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Refund</span>
+                      <strong>{prettyValue(order.refund_status || 'not required')}</strong>
+                    </div>
+                  </div>
 
-                {(order.return_status || order.return_reason || order.return_requested_at) && order.status.toLowerCase() !== 'cancelled' ? (
-                  <div className="order-status-history">
-                    <h3>Return details</h3>
-                    <ul>
-                      <li>
-                        <strong>Status</strong>
-                        <span>{prettyValue(order.return_status || 'not_requested')}</span>
-                        {order.return_requested_at ? <small>Requested on {formatDate(order.return_requested_at)}</small> : null}
-                        {order.return_reason ? <small>Reason: {order.return_reason}</small> : null}
+                  <div className="order-shipping-box">
+                    <h3>Shipping address</h3>
+                    <p>{order.shipping_address.full_name}</p>
+                    <small>{addressText(order.shipping_address)} · {order.shipping_address.phone}</small>
+                  </div>
+
+                  <ul className="order-items-list">
+                    {order.items.map((item) => (
+                      <li key={`${order.id}-${item.product_id}`} className="order-item-row">
+                        <img src={proxyImageUrl(item.image_url, '/images/banner_main.jpeg')} alt={item.name} className="order-item-thumb" />
+                        <div>
+                          <strong>{item.name}</strong>
+                          <small>Qty {item.quantity} × {formatCurrency(Number(item.unit_price || 0))}</small>
+                        </div>
+                        <span>{formatCurrency(Number(item.line_total || Number(item.unit_price || 0) * item.quantity))}</span>
                       </li>
-                    </ul>
-                  </div>
-                ) : null}
+                    ))}
+                  </ul>
 
-                {refundVisible ? (
-                  <div className="order-status-history">
-                    <h3>Refund flow</h3>
-                    <ul>
-                      <li>
-                        <strong>Status</strong>
-                        <span>{prettyValue(order.refund_status || (paymentStatus === 'paid' ? 'pending' : 'not_required'))}</span>
-                        {order.refund_requested_at ? <small>Requested on {formatDate(order.refund_requested_at)}</small> : null}
-                        {order.refunded_at ? <small>Processed on {formatDate(order.refunded_at)}</small> : null}
-                      </li>
-                      {order.refund_amount ? (
-                        <li>
-                          <strong>Amount</strong>
-                          <span>{formatCurrency(Number(order.refund_amount || 0))}</span>
-                        </li>
-                      ) : null}
-                      {order.refund_reason ? (
-                        <li>
-                          <strong>Reason</strong>
-                          <span>{order.refund_reason}</span>
-                        </li>
-                      ) : null}
-                      {order.refund_reference ? (
-                        <li>
-                          <strong>Reference</strong>
-                          <span>{order.refund_reference}</span>
-                        </li>
-                      ) : null}
-                    </ul>
-                  </div>
-                ) : null}
+                  {order.notes ? <p className="order-note">Note: {order.notes}</p> : null}
+                  {cancellationReason ? <p className="order-note cancel">Cancel reason: {cancellationReason}</p> : null}
 
-                {order.status_history?.length ? (
-                  <div className="order-status-history">
-                    <h3>Status timeline</h3>
-                    <ul>
-                      {order.status_history.map((entry, index) => (
-                        <li key={`${order.id}-${entry.changed_at}-${index}`}>
-                          <strong>{entry.status}</strong>
-                          <span>{formatDate(entry.changed_at)}</span>
-                          {entry.note ? <small>{entry.note}</small> : null}
+                  {(order.return_status || order.return_reason || order.return_requested_at) && order.status.toLowerCase() !== 'cancelled' ? (
+                    <div className="order-status-history">
+                      <h3>Return details</h3>
+                      <ul>
+                        <li>
+                          <strong>Status</strong>
+                          <span>{prettyValue(order.return_status || 'not_requested')}</span>
+                          {order.return_requested_at ? <small>Requested on {formatDate(order.return_requested_at)}</small> : null}
+                          {order.return_reason ? <small>Reason: {order.return_reason}</small> : null}
                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-
-                <div className="order-card-actions">
-                  <button
-                    type="button"
-                    className="checkout-link-button"
-                    onClick={() => handleViewInvoice(order.id)}
-                    disabled={invoiceActionOrderId === order.id}
-                  >
-                    {invoiceActionOrderId === order.id ? 'Opening…' : 'Invoice'}
-                  </button>
-                  <button
-                    type="button"
-                    className="checkout-link-button"
-                    onClick={() => void handleTrackOrder(order)}
-                    disabled={trackActionOrderId === order.id}
-                  >
-                    {trackActionOrderId === order.id ? 'Loading…' : 'Track'}
-                  </button>
-                  <button
-                    type="button"
-                    className="checkout-link-button"
-                    onClick={() => handleResendConfirmation(order.id, order.order_number)}
-                    disabled={confirmationActionOrderId === order.id}
-                  >
-                    {confirmationActionOrderId === order.id ? 'Sending…' : 'Send confirmation'}
-                  </button>
-                  {cancellable ? (
-                    <button type="button" className="checkout-secondary-button" onClick={() => openCancelModal(order)} disabled={actionOrderId === order.id}>
-                      {actionOrderId === order.id ? 'Cancelling…' : 'Cancel order'}
-                    </button>
+                      </ul>
+                    </div>
                   ) : null}
-                  {returnable && order.status.toLowerCase() !== 'cancelled' ? (
+
+                  {refundVisible ? (
+                    <div className="order-status-history">
+                      <h3>Refund flow</h3>
+                      <ul>
+                        <li>
+                          <strong>Status</strong>
+                          <span>{prettyValue(order.refund_status || (paymentStatus === 'paid' ? 'pending' : 'not_required'))}</span>
+                          {order.refund_requested_at ? <small>Requested on {formatDate(order.refund_requested_at)}</small> : null}
+                          {order.refunded_at ? <small>Processed on {formatDate(order.refunded_at)}</small> : null}
+                        </li>
+                        {order.refund_amount ? (
+                          <li>
+                            <strong>Amount</strong>
+                            <span>{formatCurrency(Number(order.refund_amount || 0))}</span>
+                          </li>
+                        ) : null}
+                        {order.refund_reason ? (
+                          <li>
+                            <strong>Reason</strong>
+                            <span>{order.refund_reason}</span>
+                          </li>
+                        ) : null}
+                        {order.refund_reference ? (
+                          <li>
+                            <strong>Reference</strong>
+                            <span>{order.refund_reference}</span>
+                          </li>
+                        ) : null}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {/* {order.status_history?.length ? (
+                    <div className="order-status-history">
+                      <h3>Status timeline</h3>
+                      <ul>
+                        {order.status_history.map((entry, index) => (
+                          <li key={`${order.id}-${entry.changed_at}-${index}`}>
+                            <strong>{entry.status}</strong>
+                            <span>{formatDate(entry.changed_at)}</span>
+                            {entry.note ? <small>{entry.note}</small> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null} */}
+
+                  <div className="order-card-actions">
                     <button
                       type="button"
                       className="checkout-link-button"
-                      onClick={() => handleReturnRequest(order.id)}
-                      disabled={returnActionOrderId === order.id}
+                      onClick={() => handleViewInvoice(order.id)}
+                      disabled={invoiceActionOrderId === order.id}
                     >
-                      {returnActionOrderId === order.id ? 'Requesting return…' : 'Request return'}
+                      {invoiceActionOrderId === order.id ? 'Opening…' : 'Invoice'}
                     </button>
-                  ) : null}
+                    <button
+                      type="button"
+                      className="checkout-link-button"
+                      onClick={() => void handleTrackOrder(order)}
+                      disabled={trackActionOrderId === order.id}
+                    >
+                      {trackActionOrderId === order.id ? 'Loading…' : 'Track'}
+                    </button>
+                    {/* <button
+                      type="button"
+                      className="checkout-link-button"
+                      onClick={() => handleResendConfirmation(order.id, order.order_number)}
+                      disabled={confirmationActionOrderId === order.id}
+                    >
+                      {confirmationActionOrderId === order.id ? 'Sending…' : 'Send confirmation'}
+                    </button> */}
+                    {cancellable ? (
+                      <button type="button" className="checkout-secondary-button" onClick={() => openCancelModal(order)} disabled={actionOrderId === order.id}>
+                        {actionOrderId === order.id ? 'Cancelling…' : 'Cancel order'}
+                      </button>
+                    ) : null}
+                    {returnable && order.status.toLowerCase() !== 'cancelled' ? (
+                      <button
+                        type="button"
+                        className="checkout-link-button"
+                        onClick={() => handleReturnRequest(order.id)}
+                        disabled={returnActionOrderId === order.id}
+                      >
+                        {returnActionOrderId === order.id ? 'Requesting return…' : 'Request return'}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             );
