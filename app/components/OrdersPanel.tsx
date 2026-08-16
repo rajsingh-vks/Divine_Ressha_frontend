@@ -341,12 +341,19 @@ export default function OrdersPanel() {
     }
   };
 
-  const handleTrackOrder = async (orderId: string, orderNumber: string) => {
-    setTrackActionOrderId(orderId);
+  const handleTrackOrder = async (order: Order) => {
+    setTrackActionOrderId(order.id);
     setError('');
 
+    const fallbackData = {
+      status: order.status,
+      'Last updated': order.updated_at ? formatDate(order.updated_at) : 'Not available yet',
+      'Tracking status': order.status_history?.length ? order.status_history[order.status_history.length - 1].status : 'Awaiting updates',
+      'Timeline': order.status_history?.length ? order.status_history : [],
+    } as Record<string, unknown>;
+
     try {
-      const response = await fetch(`/api/orders/${orderId}/track`, {
+      const response = await fetch(`/api/orders/${order.id}/track`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -359,9 +366,15 @@ export default function OrdersPanel() {
       }
 
       const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-      setTrackingPreview({ orderNumber, data: payload });
+      setTrackingPreview({
+        orderNumber: order.order_number,
+        data: Object.keys(payload).length ? payload : fallbackData,
+      });
+      return;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to fetch tracking details.');
+      const message = err instanceof Error ? err.message : 'Unable to fetch tracking details.';
+      setError(message);
+      setTrackingPreview({ orderNumber: order.order_number, data: fallbackData });
     } finally {
       setTrackActionOrderId('');
     }
@@ -542,7 +555,7 @@ export default function OrdersPanel() {
                   <button
                     type="button"
                     className="checkout-link-button"
-                    onClick={() => handleTrackOrder(order.id, order.order_number)}
+                    onClick={() => void handleTrackOrder(order)}
                     disabled={trackActionOrderId === order.id}
                   >
                     {trackActionOrderId === order.id ? 'Loading…' : 'Track'}
@@ -695,12 +708,43 @@ export default function OrdersPanel() {
             <div className="orders-modal-body">
               {Object.keys(trackingPreview.data).length ? (
                 <ul className="order-status-history">
-                  {Object.entries(trackingPreview.data).map(([key, value]) => (
-                    <li key={key}>
-                      <strong>{prettyValue(key)}</strong>
-                      <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
-                    </li>
-                  ))}
+                  {Object.entries(trackingPreview.data).map(([key, value]) => {
+                    if (Array.isArray(value) && value.length) {
+                      return (
+                        <li key={key}>
+                          <strong>{prettyValue(key)}</strong>
+                          <div className="orders-tracking-timeline">
+                            {value.map((entry, index) => {
+                              const timelineItem = entry as Record<string, unknown>;
+                              return (
+                                <div key={`${key}-${index}`} className="orders-tracking-item">
+                                  <span className="orders-tracking-dot" />
+                                  <div>
+                                    <strong>{typeof timelineItem.status === 'string' ? timelineItem.status : 'Status update'}</strong>
+                                    <small>{typeof timelineItem.changed_at === 'string' ? formatDate(timelineItem.changed_at) : 'Pending'}</small>
+                                    {timelineItem.note ? <small>{String(timelineItem.note)}</small> : null}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </li>
+                      );
+                    }
+
+                    return (
+                      <li key={key}>
+                        <strong>{prettyValue(key)}</strong>
+                        <span>
+                          {typeof value === 'string'
+                            ? value
+                            : value === null || value === undefined
+                              ? '—'
+                              : JSON.stringify(value)}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="checkout-muted">No tracking details available yet.</p>

@@ -45,9 +45,9 @@ export default function AdminSidebar({
       </nav>
 
       <div className="admin-help-card">
-        <h3>Need help?</h3>
+        {/* <h3>Need help?</h3>
         <p>Read the merchant handbook to master your storefront.</p>
-        <button type="button">Open guide</button>
+        <button type="button">Open guide</button> */}
       </div>
     </aside>
   );
