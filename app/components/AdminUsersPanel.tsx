@@ -11,6 +11,8 @@ import AdminSidebar from '@/app/components/AdminSidebar';
 
 type AdminUser = { id?: string; email?: string; name?: string; role?: string };
 
+const USERS_PER_PAGE = 5;
+
 type User = {
   id: string;
   email: string;
@@ -44,6 +46,7 @@ export default function AdminUsersPanel() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [fetchError, setFetchError] = useState('');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [deletingUserId, setDeletingUserId] = useState('');
   const [deletingHard, setDeletingHard] = useState(false);
 
@@ -169,6 +172,26 @@ export default function AdminUsersPanel() {
     );
   }, [search, users]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(start, start + USERS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
+
+  const pageStart = filteredUsers.length === 0 ? 0 : (currentPage - 1) * USERS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * USERS_PER_PAGE, filteredUsers.length);
+
   if (!ready) {
     return (
       <section className="admin-dashboard-shell">
@@ -234,8 +257,8 @@ export default function AdminUsersPanel() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
+                {paginatedUsers.length > 0 ? (
+                  paginatedUsers.map((user) => (
                     <tr key={user.id}>
                       <td>
                         <strong>{user.full_name || '—'}</strong>
@@ -279,6 +302,46 @@ export default function AdminUsersPanel() {
               </tbody>
             </table>
           </div>
+
+          {filteredUsers.length ? (
+            <div className="admin-pagination">
+              <p className="admin-pagination-meta">
+                Showing {pageStart}–{pageEnd} of {filteredUsers.length} users
+              </p>
+
+              <div className="admin-pagination-actions" aria-label="Users pagination">
+                <button
+                  type="button"
+                  className="admin-row-button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Prev
+                </button>
+
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`admin-row-button${page === currentPage ? ' active' : ''}`}
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={page === currentPage ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  className="admin-row-button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ) : null}
         </main>
       </div>
     </section>
