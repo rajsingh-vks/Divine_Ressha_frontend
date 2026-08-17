@@ -35,8 +35,6 @@ export async function generateMetadata({ params }: ProductDetailsPageProps): Pro
   };
 }
 
-export const dynamic = 'force-dynamic';
-
 export default async function ProductDetailsPage({ params }: ProductDetailsPageProps) {
   const { productId } = await params;
   const product = await getProductDetails(productId);

@@ -116,7 +116,7 @@ const fetchFromBackend = async (paths: string[]) => {
   for (const path of paths) {
     const response = await fetch(`${BACKEND_API_URL}${path}`, {
       method: 'GET',
-      cache: 'no-store',
+      next: { revalidate: 300 },
     });
 
     backendResponse = response;

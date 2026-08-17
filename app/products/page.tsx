@@ -9,8 +9,6 @@ export const metadata: Metadata = {
     description: 'Explore Divine Ressha products.',
 };
 
-export const dynamic = 'force-dynamic';
-
 export default async function ProductsPage() {
     const products = await getProducts();
 
