@@ -8,13 +8,17 @@ async function proxy(request: Request, reviewId: string) {
   const authHeader = request.headers.get('authorization');
   const cookieHeader = request.headers.get('cookie');
   const contentType = request.headers.get('content-type');
+  const acceptHeader = request.headers.get('accept');
   if (authHeader) headers.set('authorization', authHeader);
   if (cookieHeader) headers.set('cookie', cookieHeader);
   if (contentType) headers.set('content-type', contentType);
+  if (acceptHeader) headers.set('accept', acceptHeader);
+  headers.set('accept', 'application/json');
 
   const isBodyMethod = !['GET', 'HEAD', 'DELETE'].includes(request.method);
   const rawBody = isBodyMethod ? await request.text() : undefined;
   if (isBodyMethod && !headers.has('content-type')) headers.set('content-type', 'application/json');
+  if (!isBodyMethod && !headers.has('content-type')) headers.set('content-type', 'application/json');
 
   let backendResponse: Response | null = null;
   let text = '';
