@@ -5,6 +5,7 @@ import Footer from '../../components/Footer';
 import ProductCardActions from '../../components/ProductCardActions';
 import ProductImageGallery from '../../components/ProductImageGallery';
 import ProductGrid from '../../components/ProductGrid';
+import ProductReviewsPanel from '../../components/ProductReviewsPanel';
 import { getProductDetails, getProducts } from '@/lib/data/products';
 import { DISCOUNT_PERCENT, getDiscountedPrice } from '@/lib/utils/pricing';
 
@@ -88,6 +89,8 @@ export default async function ProductDetailsPage({ params }: ProductDetailsPageP
             </div>
           </div>
         </section>
+
+        <ProductReviewsPanel productId={product.id} productName={product.title} productImage={product.image} />
 
         {relatedProducts.length > 0 ? (
           <section className="related-products">

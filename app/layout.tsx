@@ -37,9 +37,9 @@ export const metadata: Metadata = {
       'Divine Ressha creates botanical body care, luxurious fragrance rituals, and modern self-care essentials inspired by nature and wellness.',
   },
   icons: {
-    icon: '/icons/logo.svg',
-    shortcut: '/icons/logo.svg',
-    apple: '/icons/logo.svg',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
   },
 };
 
