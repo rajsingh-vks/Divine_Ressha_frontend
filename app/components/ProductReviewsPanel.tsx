@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { hasStoredAuth } from '@/lib/constants/auth';
+import { AUTH_TOKEN_KEY, hasStoredAuth } from '@/lib/constants/auth';
 import {
   createReview,
   deleteReview,
@@ -58,11 +58,24 @@ export default function ProductReviewsPanel({
   const [comment, setComment] = useState('');
   const [pendingOrderItem, setPendingOrderItem] = useState<{ product_id?: string; order_id?: string } | null>(null);
   const [myReviewsLoading, setMyReviewsLoading] = useState(false);
+  const [purchasedProductIds, setPurchasedProductIds] = useState<Set<string> | null>(null);
   const searchParams = useSearchParams();
 
-  const currentUserReview = useMemo(
-    () => myReviews.find((item) => String(item.product_id || item.productId || '') === String(productId)),
+  const productMyReviews = useMemo(
+    () => myReviews.filter((item) => String(item.product_id || item.productId || '') === String(productId)),
     [myReviews, productId]
+  );
+
+  const currentUserReview = useMemo(
+    () => productMyReviews[0] || null,
+    [productMyReviews]
+  );
+
+  const purchaseCheckLoaded = purchasedProductIds !== null;
+
+  const hasPurchasedCurrentProduct = useMemo(
+    () => Boolean(purchasedProductIds && purchasedProductIds.has(String(productId))),
+    [purchasedProductIds, productId]
   );
 
   const loadReviews = async () => {
@@ -89,6 +102,7 @@ export default function ProductReviewsPanel({
   useEffect(() => {
     if (!isLoggedIn()) {
       setMyReviews([]);
+      setPurchasedProductIds(null);
       return;
     }
 
@@ -104,7 +118,48 @@ export default function ProductReviewsPanel({
       }
     };
 
+    const loadPurchasedProducts = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem(AUTH_TOKEN_KEY) || '' : '';
+        const response = await fetch('/api/orders/user/history', {
+          method: 'GET',
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error('Unable to load purchased products.');
+        }
+
+        const payload = (await response.json()) as Array<{
+          status?: string;
+          items?: Array<{ product_id?: string | null }>;
+        }>;
+
+        const nextPurchased = new Set<string>();
+        for (const order of payload || []) {
+          if (!order || typeof order !== 'object') continue;
+          const status = String(order.status || '').toLowerCase();
+          if (status !== 'delivered' && status !== 'completed') continue;
+
+          for (const item of order.items || []) {
+            const productIdValue = String(item?.product_id || '').trim();
+            if (productIdValue) {
+              nextPurchased.add(productIdValue);
+            }
+          }
+        }
+
+        setPurchasedProductIds(nextPurchased);
+      } catch {
+        setPurchasedProductIds(new Set());
+      }
+    };
+
+    setPurchasedProductIds(null);
     void loadMyReviews();
+    void loadPurchasedProducts();
   }, [productId]);
 
   const averageRating = useMemo(() => {
@@ -205,10 +260,21 @@ export default function ProductReviewsPanel({
     }
   };
 
-  const canWriteReview = !loading && isLoggedIn() && !currentUserReview;
+  const canWriteReview = !loading && isLoggedIn() && purchaseCheckLoaded && hasPurchasedCurrentProduct && !currentUserReview;
 
   useEffect(() => {
     if (searchParams.get('openReview') !== '1' || !isLoggedIn() || currentUserReview || loading) {
+      return;
+    }
+
+    if (!purchaseCheckLoaded) {
+      return;
+    }
+
+    if (!hasPurchasedCurrentProduct) {
+      setReviewFormOpen(false);
+      setPendingOrderItem(null);
+      setReviewError('');
       return;
     }
 
@@ -219,7 +285,7 @@ export default function ProductReviewsPanel({
     setComment('');
     setReviewError('');
     setReviewSuccess('');
-  }, [searchParams, currentUserReview, loading, productId]);
+  }, [searchParams, currentUserReview, loading, hasPurchasedCurrentProduct, purchaseCheckLoaded, productId]);
 
   return (
     <section className="product-review-section" aria-label="Customer reviews">
@@ -331,16 +397,13 @@ export default function ProductReviewsPanel({
           )}
         </div>
 
-        {isLoggedIn() && !loading ? (
+        {isLoggedIn() && !loading && productMyReviews.length > 0 ? (
           <div className="product-review-panel">
             <h3>My Reviews</h3>
             {myReviewsLoading ? <p className="product-review-message">Loading your reviews…</p> : null}
-            {!myReviewsLoading && myReviews.length === 0 ? (
-              <p className="product-review-empty">You haven&apos;t written any reviews yet.</p>
-            ) : null}
-            {myReviews.length > 0 ? (
+            {!myReviewsLoading && productMyReviews.length > 0 ? (
               <div className="profile-my-reviews">
-                {myReviews.map((review) => (
+                {productMyReviews.map((review) => (
                   <article key={String(review.id || review.review_id || `${review.product_id}-${review.created_at}`)} className="profile-review-card">
                     <div className="profile-review-card-header">
                       <div className="profile-review-card-top">
@@ -355,10 +418,10 @@ export default function ProductReviewsPanel({
                     <p>{review.comment || review.review || 'No comment provided.'}</p>
                     <div className="profile-review-actions">
                       <Link href={`/products/${encodeURIComponent(String(review.product_id || review.productId || productId))}`} className="checkout-link-button">View Product</Link>
-                      <button type="button" className="checkout-link-button" onClick={() => handleEdit(review)}>Edit</button>
+                      {/* <button type="button" className="checkout-link-button" onClick={() => handleEdit(review)}>Edit</button>
                       <button type="button" className="checkout-link-button" onClick={() => void handleDelete(review)} disabled={deletingId === String(review.id || review.review_id || '')}>
                         {deletingId === String(review.id || review.review_id || '') ? 'Deleting...' : 'Delete'}
-                      </button>
+                      </button> */}
                     </div>
                   </article>
                 ))}

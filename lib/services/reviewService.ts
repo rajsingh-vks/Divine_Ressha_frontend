@@ -267,6 +267,7 @@ export async function updateReview(reviewId: string, payload: { rating?: number;
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      Accept: 'application/json',
       ...getAuthHeaders(),
     },
     body: JSON.stringify({
@@ -288,7 +289,12 @@ export async function deleteReview(reviewId: string) {
   const response = await fetch(`/api/reviews/${encodeURIComponent(reviewId)}`, {
     method: 'DELETE',
     credentials: 'include',
-    headers: getAuthHeaders(),
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({}),
   });
 
   if (!response.ok) {
