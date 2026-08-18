@@ -86,5 +86,5 @@ export function buildPageMetadata({
       description,
       images: [buildPageUrl(ogImage)],
     },
-  } as const;
+  };
 }
