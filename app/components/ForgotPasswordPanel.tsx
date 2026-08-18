@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 type ForgotPasswordPanelProps = {
@@ -21,6 +21,7 @@ const getErrorMessage = (data: ApiPayload, fallback: string) => {
 };
 
 export default function ForgotPasswordPanel({ mode = 'forgot' }: ForgotPasswordPanelProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const isResetMode = mode === 'reset';
 
@@ -219,9 +220,13 @@ export default function ForgotPasswordPanel({ mode = 'forgot' }: ForgotPasswordP
         throw new Error(message);
       }
 
-      setSuccess(data.message || 'Password reset successful. You can now sign in.');
+      setSuccess(data.message || 'Password reset successful. Redirecting to login…');
       setNewPassword('');
       setConfirmPassword('');
+
+      setTimeout(() => {
+        router.push('/login');
+      }, 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to reset password.');
     } finally {
