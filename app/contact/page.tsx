@@ -86,7 +86,7 @@ export default function ContactPage() {
           </div>
         </section>
 
-        <section className="contact-form-section">
+        {/* <section className="contact-form-section">
           <div className="contact-form-shell">
             <div className="contact-form-copy">
               <p className="info-page-overline">Write to us</p>
@@ -132,7 +132,7 @@ export default function ContactPage() {
               <button type="submit" className="contact-submit">Send message</button>
             </form>
           </div>
-        </section>
+        </section> */}
       </main>
       <Footer />
     </>
