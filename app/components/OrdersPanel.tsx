@@ -439,6 +439,15 @@ export default function OrdersPanel() {
                 Boolean(order.refund_requested_at) ||
                 Boolean(order.refunded_at));
             const isExpanded = expandedOrderId === order.id;
+            const reviewedItems = order.items.filter((item) => {
+              const itemProductId = String(item.product_id || '');
+              return myReviews.some((review) => String(review.product_id || review.productId || '') === itemProductId);
+            });
+            const reviewSummaryText = reviewedItems.length
+              ? 'Reviewed'
+              : order.status.toLowerCase() === 'delivered'
+                ? 'Write a review'
+                : 'Review after delivery';
 
             return (
               <article key={order.id} className={`order-card${isExpanded ? ' expanded' : ''}`}>
@@ -465,6 +474,23 @@ export default function OrdersPanel() {
                     </div>
                     <div className="order-card-meta">
                       <span className={statusClassName(order.status)}>{order.status}</span>
+                      <span
+                        className="checkout-muted"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid #d6d0bf',
+                          borderRadius: '999px',
+                          padding: '0.25rem 0.7rem',
+                          fontSize: '0.72rem',
+                          lineHeight: 1.3,
+                          marginLeft: '0.5rem',
+                          minHeight: '26px',
+                        }}
+                      >
+                        {reviewSummaryText}
+                      </span>
                       <span className="order-card-chevron" aria-hidden="true">{isExpanded ? '−' : '+'}</span>
                     </div>
                   </div>

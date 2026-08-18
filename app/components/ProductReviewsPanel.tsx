@@ -51,6 +51,9 @@ const getNameFromProfile = (user?: { first_name?: string | null; last_name?: str
 const getStoredCustomerName = () => {
   if (typeof window === 'undefined') return '';
 
+  const authToken = localStorage.getItem(AUTH_TOKEN_KEY) || '';
+  if (!authToken || authToken === 'authenticated') return '';
+
   try {
     const raw = localStorage.getItem(AUTH_USER_KEY);
     if (!raw) return '';
