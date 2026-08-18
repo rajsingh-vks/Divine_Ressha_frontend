@@ -2,11 +2,14 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { buildPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Contact | Divine Ressha',
-  description: 'Contact Divine Ressha support team.',
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: 'Contact Divine Ressha | Support & Inquiries',
+  description:
+    'Contact Divine Ressha for product questions, support, and fragrance inquiries from our wellness and body care team.',
+  path: '/contact',
+});
 
 export default function ContactPage() {
   return (
