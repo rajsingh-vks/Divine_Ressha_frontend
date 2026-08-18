@@ -6,7 +6,6 @@ export default function Newsletter() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Handle newsletter subscription
-    console.log('Newsletter subscription submitted');
   };
 
   return (
