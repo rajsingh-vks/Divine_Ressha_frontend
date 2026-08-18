@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { AUTH_SESSION_KEY, AUTH_TOKEN_KEY, hasStoredAuth } from '@/lib/constants/auth';
+import { getMyReviews, type Review } from '@/lib/services/reviewService';
 import { proxyImageUrl } from '@/lib/utils/imageProxy';
 
 type OrderItem = {
@@ -122,6 +123,7 @@ export default function OrdersPanel() {
   const [actionNotice, setActionNotice] = useState('');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [trackingPreview, setTrackingPreview] = useState<TrackingPreviewState | null>(null);
+  const [myReviews, setMyReviews] = useState<Review[]>([]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -159,7 +161,19 @@ export default function OrdersPanel() {
       }
 
       const payload = (await response.json()) as Order[];
-      setOrders(Array.isArray(payload) ? payload : []);
+      const nextOrders = Array.isArray(payload) ? payload : [];
+      setOrders(nextOrders);
+
+      if (isAuthenticated()) {
+        try {
+          const reviews = await getMyReviews();
+          setMyReviews(reviews);
+        } catch {
+          setMyReviews([]);
+        }
+      } else {
+        setMyReviews([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load orders.');
     } finally {
@@ -176,6 +190,11 @@ export default function OrdersPanel() {
 
     void loadOrders();
   }, [router]);
+
+  const reviewedProductIds = useMemo(
+    () => new Set(myReviews.map((review) => String(review.product_id || review.productId || ''))),
+    [myReviews]
+  );
 
   const handleCancelOrder = async (orderId: string, reason: string) => {
     setActionOrderId(orderId);
@@ -494,16 +513,48 @@ export default function OrdersPanel() {
                   </div>
 
                   <ul className="order-items-list">
-                    {order.items.map((item) => (
-                      <li key={`${order.id}-${item.product_id}`} className="order-item-row">
-                        <img src={proxyImageUrl(item.image_url, '/images/banner_main.jpeg')} alt={item.name} className="order-item-thumb" />
-                        <div>
-                          <strong>{item.name}</strong>
-                          <small>Qty {item.quantity} × {formatCurrency(Number(item.unit_price || 0))}</small>
-                        </div>
-                        <span>{formatCurrency(Number(item.line_total || Number(item.unit_price || 0) * item.quantity))}</span>
-                      </li>
-                    ))}
+                    {order.items.map((item) => {
+                      const itemProductId = String(item.product_id || '');
+                      const existingReview = myReviews.find(
+                        (review) => String(review.product_id || review.productId || '') === itemProductId
+                      );
+                      const itemDelivered = order.status.toLowerCase() === 'delivered';
+
+                      return (
+                        <li key={`${order.id}-${item.product_id}`} className="order-item-row">
+                          <img src={proxyImageUrl(item.image_url, '/images/banner_main.jpeg')} alt={item.name} className="order-item-thumb" />
+                          <div style={{ flex: 1 }}>
+                            <strong>{item.name}</strong>
+                            <small>Qty {item.quantity} × {formatCurrency(Number(item.unit_price || 0))}</small>
+                            {existingReview ? (
+                              <div style={{ marginTop: '0.45rem' }}>
+                                <p className="checkout-muted" style={{ marginBottom: '0.2rem' }}>Your Review</p>
+                                <div className="product-review-inline-stars">{'★'.repeat(Math.min(5, existingReview.rating))}{'☆'.repeat(5 - Math.min(5, existingReview.rating))}</div>
+                                <p className="checkout-muted" style={{ marginTop: '0.2rem' }}>{existingReview.comment || existingReview.review || 'No comment provided.'}</p>
+                                <div className="review-item-actions" style={{ marginTop: '0.4rem' }}>
+                                  <button type="button" className="checkout-link-button" onClick={() => router.push(`/products/${encodeURIComponent(itemProductId)}`)}>
+                                    Edit Review
+                                  </button>
+                                </div>
+                              </div>
+                            ) : itemDelivered ? (
+                              <div className="review-item-actions" style={{ marginTop: '0.45rem' }}>
+                                <button
+                                  type="button"
+                                  className="checkout-link-button"
+                                  onClick={() => router.push(`/products/${encodeURIComponent(itemProductId)}?openReview=1&orderId=${encodeURIComponent(order.id)}`)}
+                                >
+                                  Write a Review
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="checkout-muted" style={{ marginTop: '0.45rem' }}>Review available after delivery</p>
+                            )}
+                          </div>
+                          <span>{formatCurrency(Number(item.line_total || Number(item.unit_price || 0) * item.quantity))}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
 
                   {order.notes ? <p className="order-note">Note: {order.notes}</p> : null}
