@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { AUTH_TOKEN_KEY, hasStoredAuth } from '@/lib/constants/auth';
+import { AUTH_TOKEN_KEY, AUTH_USER_KEY, hasStoredAuth } from '@/lib/constants/auth';
 import {
   createReview,
   deleteReview,
@@ -35,6 +35,69 @@ const getErrorMessage = (message: string) => {
 };
 
 const isLoggedIn = () => hasStoredAuth();
+
+const getNameFromProfile = (user?: { first_name?: string | null; last_name?: string | null; full_name?: string | null; name?: string | null }) => {
+  if (!user) return '';
+
+  const first = (user.first_name || '').trim();
+  const last = (user.last_name || '').trim();
+  if (first || last) {
+    return [first, last].filter(Boolean).join(' ');
+  }
+
+  return (user.full_name || user.name || '').trim();
+};
+
+const getStoredCustomerName = () => {
+  if (typeof window === 'undefined') return '';
+
+  try {
+    const raw = localStorage.getItem(AUTH_USER_KEY);
+    if (!raw) return '';
+
+    const user = JSON.parse(raw) as {
+      name?: string | null;
+      full_name?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+    };
+
+    return (
+      user.full_name ||
+      user.name ||
+      [user.first_name, user.last_name].filter(Boolean).join(' ') ||
+      ''
+    ).trim();
+  } catch {
+    return '';
+  }
+};
+
+const getReviewDisplayName = (review: Review, currentUserReview?: Review | null) => {
+  const sameReviewId =
+    currentUserReview &&
+    (String(review.id || review.review_id || '') === String(currentUserReview.id || currentUserReview.review_id || ''));
+
+  if (sameReviewId) {
+    const storedName = getStoredCustomerName();
+    if (storedName) return storedName;
+  }
+
+  const candidates = [
+    review.customer_name,
+    review.customerName,
+    review.name,
+    review.display_name,
+    getNameFromProfile(review.user),
+    getNameFromProfile(review.customer),
+    review.user?.full_name,
+    review.user?.name,
+    review.customer?.full_name,
+    review.customer?.name,
+  ];
+
+  return candidates.find((value) => typeof value === 'string' && value.trim()) || 'Customer';
+};
 
 export default function ProductReviewsPanel({
   productId,
@@ -385,12 +448,11 @@ export default function ProductReviewsPanel({
               {reviews.map((review) => (
                 <article key={String(review.id || review.review_id || `${review.product_id}-${review.created_at}`)} className="review-item">
                   <div className="review-item-header">
-                    <strong>{review.customer_name || review.name || 'Customer'}</strong>
+                    <strong>{getReviewDisplayName(review, currentUserReview)}</strong>
                     <span className="review-item-meta">{formatDate(review.created_at || review.updated_at)}</span>
                   </div>
                   <div className="product-review-inline-stars">{starLabel(review.rating)}</div>
                   <p>{review.comment || review.review || 'No comment provided.'}</p>
-                  {String(review.customer_name || review.name || '') === 'Customer' || !review.customer_name ? null : null}
                 </article>
               ))}
             </div>
