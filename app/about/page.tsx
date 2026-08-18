@@ -2,11 +2,14 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { buildPageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'About Us | Divine Ressha',
-  description: 'Learn about Divine Ressha.',
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: 'About Divine Ressha | Botanical Rituals & Natural Wellness',
+  description:
+    'Learn about Divine Ressha, a botanical body care brand rooted in nature-inspired wellness and elevated daily rituals.',
+  path: '/about',
+});
 
 export default function AboutPage() {
   return (
