@@ -48,13 +48,42 @@ type AuthUser = {
   email_verified?: boolean;
 };
 
+const COUNTRY_OPTIONS = [
+  { label: 'India (+91)', value: '+91' },
+  { label: 'United States (+1)', value: '+1' },
+  { label: 'United Kingdom (+44)', value: '+44' },
+  { label: 'UAE (+971)', value: '+971' },
+  { label: 'Australia (+61)', value: '+61' },
+  { label: 'Singapore (+65)', value: '+65' },
+  { label: 'Canada (+1)', value: '+1' },
+];
+
 const initialState = {
   name: '',
   email: '',
   phone: '',
+  countryCode: '+91',
   password: '',
   confirmPassword: '',
   emailCode: '',
+};
+
+const normalizePhoneForBackend = (value: string, countryCode?: string) => {
+  const raw = value.trim();
+  if (!raw) return raw;
+
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return raw;
+
+  const selectedCode = countryCode || '+91';
+  const normalizedCountryCode = selectedCode.replace(/\D/g, '');
+
+  if (digits.length === 10 && normalizedCountryCode === '91') return `+91${digits}`;
+  if (digits.startsWith(normalizedCountryCode)) return `+${digits}`;
+  if (normalizedCountryCode && digits.length > 10 && digits.startsWith('0')) return `+${normalizedCountryCode}${digits.slice(1)}`;
+  if (normalizedCountryCode) return `+${normalizedCountryCode}${digits}`;
+
+  return `+${digits}`;
 };
 
 const REMEMBER_EMAIL_KEY = 'divine_ressha_remember_email';
@@ -72,6 +101,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [serverMobileCode, setServerMobileCode] = useState('');
   const [resendingVerification, setResendingVerification] = useState(false);
   const [signupStep, setSignupStep] = useState<'details' | 'verify'>('details');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'mobile'>('password');
+  const [mobileLoginStep, setMobileLoginStep] = useState<'request' | 'verify'>('request');
 
   const isSignup = mode === 'signup';
 
@@ -97,8 +128,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
         ? signupStep === 'details'
           ? 'Create your Divine Ressha account. We will send a verification code to your email.'
           : 'Enter the email verification code to complete your account setup.'
-        : 'Sign in to continue your botanical ritual and access your account.',
-    [isSignup, signupStep]
+        : loginMethod === 'mobile'
+          ? mobileLoginStep === 'request'
+            ? 'Enter your mobile number to receive a verification code.'
+            : 'Enter the 6-digit verification code sent to your mobile number.'
+          : 'Sign in to continue your botanical ritual and access your account.',
+    [isSignup, loginMethod, mobileLoginStep, signupStep]
   );
 
   const handleChange = (field: keyof typeof initialState) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,36 +165,61 @@ export default function AuthForm({ mode }: AuthFormProps) {
       return;
     }
 
+    if (!isSignup && loginMethod === 'mobile' && mobileLoginStep === 'request' && !form.phone.trim()) {
+      setError('Mobile number is required.');
+      return;
+    }
+
+    if (!isSignup && loginMethod === 'mobile' && mobileLoginStep === 'verify' && !form.emailCode.trim()) {
+      setError('Verification code is required.');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const normalizedPhone = normalizePhoneForBackend(form.phone, form.countryCode);
+
       const endpoint = isSignup
         ? signupStep === 'details'
           ? '/api/auth/signup/initiate'
           : '/api/auth/signup/complete'
-        : `/api/auth/${mode}`;
+        : loginMethod === 'password'
+          ? '/api/auth/login'
+          : mobileLoginStep === 'request'
+            ? '/api/auth/mobile-login/initiate'
+            : '/api/auth/mobile-login/verify';
 
       const bodyPayload = isSignup
         ? signupStep === 'details'
           ? {
               full_name: form.name.trim() || undefined,
               email: form.email.trim(),
-              phone: form.phone.trim(),
+              phone: normalizedPhone,
               password: form.password,
             }
           : {
               full_name: form.name.trim() || undefined,
               email: form.email.trim(),
-              phone: form.phone.trim(),
+              phone: normalizedPhone,
               password: form.password,
               email_code: form.emailCode.trim(),
               mobile_code: (serverMobileCode || form.emailCode).trim(),
               ...(signupVerificationId ? { verification_id: signupVerificationId } : {}),
             }
-        : {
-            email: form.email.trim(),
-            password: form.password,
-          };
+        : loginMethod === 'password'
+          ? {
+              email: form.email.trim(),
+              password: form.password,
+            }
+          : mobileLoginStep === 'request'
+            ? {
+                phone: normalizedPhone,
+              }
+            : {
+                phone: normalizedPhone,
+                otp: form.emailCode.trim(),
+              };
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -189,6 +249,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
           )
         );
         setSuccess(data.message || 'Verification code sent. Enter your email code to complete signup.');
+        return;
+      }
+
+      if (!isSignup && loginMethod === 'mobile' && mobileLoginStep === 'request') {
+        setMobileLoginStep('verify');
+        setSuccess(data.message || 'Verification code sent to your mobile number.');
         return;
       }
 
@@ -243,6 +309,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
         setVerificationEmail('');
         setSignupVerificationId('');
         setServerMobileCode('');
+      }
+      if (!isSignup) {
+        setLoginMethod('password');
+        setMobileLoginStep('request');
       }
       router.replace('/profile');
       router.refresh();
@@ -326,34 +396,124 @@ export default function AuthForm({ mode }: AuthFormProps) {
             </label>
           )}
 
-          <label className="auth-field">
-            <span>Email</span>
-            <input
-              type="email"
-              name="email"
-              placeholder="Enter your email"
-              value={form.email}
-              onChange={handleChange('email')}
-              required
-              disabled={isSignup && signupStep === 'verify'}
-            />
-          </label>
+          {!isSignup ? (
+            <div className="auth-toggle" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <button
+                type="button"
+                className={loginMethod === 'password' ? 'auth-submit' : 'checkout-link-button'}
+                style={{ flex: 1, minHeight: '42px' }}
+                onClick={() => {
+                  setLoginMethod('password');
+                  setMobileLoginStep('request');
+                  setError('');
+                  setSuccess('');
+                }}
+              >
+                Email & Password
+              </button>
+              <button
+                type="button"
+                className={loginMethod === 'mobile' ? 'auth-submit' : 'checkout-link-button'}
+                style={{ flex: 1, minHeight: '42px' }}
+                onClick={() => {
+                  setLoginMethod('mobile');
+                  setMobileLoginStep('request');
+                  setError('');
+                  setSuccess('');
+                }}
+              >
+                Mobile OTP
+              </button>
+            </div>
+          ) : null}
 
-          {isSignup && signupStep === 'details' ? (
+          {!isSignup && loginMethod === 'password' ? (
             <label className="auth-field">
-              <span>Mobile number</span>
+              <span>Email</span>
               <input
-                type="tel"
-                name="phone"
-                placeholder="Enter your mobile number"
-                value={form.phone}
-                onChange={handleChange('phone')}
+                type="email"
+                name="email"
+                placeholder="Enter your email"
+                value={form.email}
+                onChange={handleChange('email')}
                 required
               />
             </label>
           ) : null}
 
-          {(!isSignup || signupStep === 'details') && (
+          {!isSignup && loginMethod === 'mobile' ? (
+            <label className="auth-field">
+              <span>Mobile number</span>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select
+                  value={form.countryCode}
+                  onChange={handleChange('countryCode')}
+                  style={{ minWidth: '135px', padding: '0.8rem 0.75rem', borderRadius: '10px', border: '1px solid #dfe3ea', background: '#fff' }}
+                  aria-label="Select country code"
+                >
+                  {COUNTRY_OPTIONS.map((country) => (
+                    <option key={`${country.label}-${country.value}`} value={country.value}>
+                      {country.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="Enter your mobile number"
+                  value={form.phone}
+                  onChange={handleChange('phone')}
+                  required
+                  style={{ flex: 1 }}
+                />
+              </div>
+            </label>
+          ) : null}
+
+          {isSignup && signupStep === 'details' ? (
+            <>
+              <label className="auth-field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Enter your email"
+                  value={form.email}
+                  onChange={handleChange('email')}
+                  required
+                />
+              </label>
+
+              <label className="auth-field">
+                <span>Mobile number</span>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <select
+                    value={form.countryCode}
+                    onChange={handleChange('countryCode')}
+                    style={{ minWidth: '135px', padding: '0.8rem 0.75rem', borderRadius: '10px', border: '1px solid #dfe3ea', background: '#fff' }}
+                    aria-label="Select country code"
+                  >
+                    {COUNTRY_OPTIONS.map((country) => (
+                      <option key={`${country.label}-${country.value}`} value={country.value}>
+                        {country.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    name="phone"
+                    placeholder="Enter your mobile number"
+                    value={form.phone}
+                    onChange={handleChange('phone')}
+                    required
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </label>
+            </>
+          ) : null}
+
+          {(!isSignup || signupStep === 'details') && loginMethod === 'password' && (
             <label className="auth-field">
               <span>Password</span>
               <input
@@ -411,17 +571,35 @@ export default function AuthForm({ mode }: AuthFormProps) {
             </>
           ) : null}
 
+          {!isSignup && loginMethod === 'mobile' && mobileLoginStep === 'verify' ? (
+            <label className="auth-field">
+              <span>Verification code</span>
+              <input
+                type="text"
+                name="emailCode"
+                placeholder="Enter 6-digit code"
+                value={form.emailCode}
+                onChange={handleChange('emailCode')}
+                required
+              />
+            </label>
+          ) : null}
+
           {!isSignup ? (
             <div className="auth-login-meta">
-              <label className="auth-remember">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(event) => setRememberMe(event.target.checked)}
-                />
-                <span>Remember me</span>
-              </label>
-              <Link href="/forgot-password">Forgot password?</Link>
+              {loginMethod === 'password' ? (
+                <label className="auth-remember">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                  />
+                  <span>Remember me</span>
+                </label>
+              ) : (
+                <span className="checkout-muted">Use your mobile number to verify and sign in</span>
+              )}
+              {loginMethod === 'password' ? <Link href="/forgot-password">Forgot password?</Link> : null}
             </div>
           ) : null}
 
@@ -454,7 +632,17 @@ export default function AuthForm({ mode }: AuthFormProps) {
           ) : null}
 
           <button className="auth-submit" type="submit" disabled={loading}>
-            {loading ? 'PLEASE WAIT…' : isSignup ? (signupStep === 'details' ? 'SEND VERIFICATION CODE' : 'VERIFY & CREATE ACCOUNT') : 'SIGN IN'}
+            {loading
+              ? 'PLEASE WAIT…'
+              : isSignup
+                ? signupStep === 'details'
+                  ? 'SEND VERIFICATION CODE'
+                  : 'VERIFY & CREATE ACCOUNT'
+                : loginMethod === 'mobile'
+                  ? mobileLoginStep === 'request'
+                    ? 'SEND VERIFICATION CODE'
+                    : 'VERIFY & SIGN IN'
+                  : 'SIGN IN'}
           </button>
 
         </form>

@@ -30,6 +30,8 @@ export const BACKEND_API_URL =
 
 export const AUTH_ENDPOINTS = {
   login: '/auth/login',
+  mobileLoginInitiate: '/auth/mobile-login/initiate',
+  mobileLoginVerify: '/auth/mobile-login/verify',
   signup: '/auth/signup',
   signupInitiate: '/auth/signup/initiate',
   signupComplete: '/auth/signup/complete',
