@@ -136,7 +136,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
     [isSignup, loginMethod, mobileLoginStep, signupStep]
   );
 
-  const handleChange = (field: keyof typeof initialState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (field: keyof typeof initialState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((current) => ({ ...current, [field]: e.target.value }));
   };
 
