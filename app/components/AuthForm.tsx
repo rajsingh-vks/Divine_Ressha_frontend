@@ -397,7 +397,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           )}
 
           {!isSignup ? (
-            <div className="auth-toggle" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <div className="auth-toggle" style={{ display: 'none', gap: '0.5rem', marginBottom: '1rem' }}>
               <button
                 type="button"
                 className={loginMethod === 'password' ? 'auth-submit' : 'checkout-link-button'}

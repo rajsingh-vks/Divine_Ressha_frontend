@@ -1,4 +1,4 @@
-export const DISCOUNT_PERCENT = 20;
+export const DISCOUNT_PERCENT = 25;
 
 export const getDiscountedPrice = (price: number) => {
   const normalizedPrice = Number(price);
