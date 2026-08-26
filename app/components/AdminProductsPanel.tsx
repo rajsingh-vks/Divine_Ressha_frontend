@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ADMIN_AUTH_SESSION_KEY,
@@ -102,6 +102,7 @@ const getApiErrorMessage = (payload: ApiErrorPayload, fallback: string) => {
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const PRODUCTS_PER_PAGE = 4;
 
 const getProductImages = (product: Product) => {
   const images = Array.isArray(product.images) ? product.images.filter((image): image is string => typeof image === 'string' && Boolean(image.trim())) : [];
@@ -115,6 +116,7 @@ export default function AdminProductsPanel() {
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterTab>('All');
+  const [currentPage, setCurrentPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState<ProductForm>({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
@@ -206,14 +208,36 @@ export default function AdminProductsPanel() {
     router.replace('/admin/login');
   };
 
-  const filteredProducts = products.filter((p) => {
-    const matchesFilter = filter === 'All' || p.status === filter;
-    const matchesSearch =
-      !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchesFilter = filter === 'All' || p.status === filter;
+      const matchesSearch =
+        !search ||
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.sku.toLowerCase().includes(search.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [products, search, filter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return filteredProducts.slice(start, start + PRODUCTS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
+
+  const pageStart = filteredProducts.length === 0 ? 0 : (currentPage - 1) * PRODUCTS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * PRODUCTS_PER_PAGE, filteredProducts.length);
 
   const handleField = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -549,10 +573,10 @@ export default function AdminProductsPanel() {
               <tbody>
                 {loadingProducts ? (
                   <tr><td colSpan={6} className="admin-table-empty">Loading products...</td></tr>
-                ) : filteredProducts.length === 0 ? (
+                ) : paginatedProducts.length === 0 ? (
                   <tr><td colSpan={6} className="admin-table-empty">No products found.</td></tr>
                 ) : (
-                  filteredProducts.map((product) => (
+                  paginatedProducts.map((product) => (
                     <tr key={product.id}>
                       <td>
                         <div className="admin-product-cell">
@@ -591,6 +615,46 @@ export default function AdminProductsPanel() {
               </tbody>
             </table>
           </div>
+
+          {filteredProducts.length ? (
+            <div className="admin-pagination">
+              <p className="admin-pagination-meta">
+                Showing {pageStart}–{pageEnd} of {filteredProducts.length} products
+              </p>
+
+              <div className="admin-pagination-actions" aria-label="Products pagination">
+                <button
+                  type="button"
+                  className="admin-row-button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Prev
+                </button>
+
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`admin-row-button${page === currentPage ? ' active' : ''}`}
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={page === currentPage ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  className="admin-row-button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ) : null}
         </main>
       </div>
 
