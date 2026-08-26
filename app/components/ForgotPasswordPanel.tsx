@@ -25,7 +25,7 @@ export default function ForgotPasswordPanel({ mode = 'forgot' }: ForgotPasswordP
   const searchParams = useSearchParams();
   const isResetMode = mode === 'reset';
 
-  const [step, setStep] = useState<'request' | 'verify'>('request');
+  const [step, setStep] = useState<'request' | 'verify' | 'reset'>('request');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [token, setToken] = useState('');
@@ -40,9 +40,9 @@ export default function ForgotPasswordPanel({ mode = 'forgot' }: ForgotPasswordP
     const tokenFromQuery = searchParams.get('token') || searchParams.get('code') || '';
     if (tokenFromQuery) {
       setToken(tokenFromQuery);
-      setStep('verify');
+      setStep('reset');
     } else if (isResetMode) {
-      setStep('verify');
+      setStep('reset');
     }
   }, [isResetMode, searchParams]);
 
@@ -165,7 +165,7 @@ export default function ForgotPasswordPanel({ mode = 'forgot' }: ForgotPasswordP
 
       setToken(nextToken);
       setSuccess(data.message || 'Reset code verified. Please enter your new password.');
-      setStep('verify');
+      setStep('reset');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to verify reset code.');
     } finally {
@@ -266,106 +266,104 @@ export default function ForgotPasswordPanel({ mode = 'forgot' }: ForgotPasswordP
               {loading ? 'PLEASE WAIT…' : 'SEND RESET CODE'}
             </button>
           </form>
+        ) : step === 'verify' ? (
+          <form className="auth-form" onSubmit={handleVerifyOtp}>
+            <p className="auth-message" style={{ marginTop: '-0.25rem' }}>
+              We sent a code to your email. Check spam/promotions or resend it.
+            </p>
+
+            <label className="auth-field">
+              <span>Reset code</span>
+              <input
+                type="text"
+                placeholder="Enter 6-digit code from email"
+                value={otp}
+                onChange={(event) => setOtp(event.target.value)}
+                required
+              />
+            </label>
+
+            {error ? <p className="auth-message auth-message-error">{error}</p> : null}
+            {success ? <p className="auth-message auth-message-success">{success}</p> : null}
+
+            <button className="auth-submit" type="submit" disabled={loading}>
+              {loading ? 'VERIFYING…' : 'VERIFY RESET CODE'}
+            </button>
+
+            <button
+              className="auth-secondary-button"
+              type="button"
+              onClick={handleResend}
+              disabled={resending || loading}
+            >
+              {resending ? 'SENDING…' : 'RESEND RESET CODE'}
+            </button>
+          </form>
         ) : (
-          <>
-            <form className="auth-form" onSubmit={handleVerifyOtp}>
-              <p className="auth-message" style={{ marginTop: '-0.25rem' }}>
-                We sent a code to your email. Check spam/promotions or resend it.
-              </p>
+          <form className="auth-form" onSubmit={handleResetPassword} style={{ marginTop: '1rem' }}>
+            {/* <label className="auth-field">
+              <span>Reset token</span>
+              <input
+                type="text"
+                placeholder="Token returned after verification"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                required
+              />
+            </label> */}
 
-              <label className="auth-field">
-                <span>Reset code</span>
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit code from email"
-                  value={otp}
-                  onChange={(event) => setOtp(event.target.value)}
-                  required
-                />
-              </label>
+            <label className="auth-field">
+              <span>New password</span>
+              <input
+                type="password"
+                placeholder="Enter new password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                minLength={8}
+                required
+              />
+            </label>
 
-              {error ? <p className="auth-message auth-message-error">{error}</p> : null}
-              {success ? <p className="auth-message auth-message-success">{success}</p> : null}
+            <label className="auth-field">
+              <span>Confirm new password</span>
+              <input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                minLength={8}
+                required
+              />
+            </label>
 
-              <button className="auth-submit" type="submit" disabled={loading}>
-                {loading ? 'VERIFYING…' : 'VERIFY RESET CODE'}
-              </button>
+            {error ? <p className="auth-message auth-message-error">{error}</p> : null}
+            {success ? <p className="auth-message auth-message-success">{success}</p> : null}
 
-              <button
-                className="auth-submit"
-                type="button"
-                onClick={handleResend}
-                disabled={resending || loading}
-              >
-                {resending ? 'SENDING…' : 'RESEND RESET CODE'}
-              </button>
-            </form>
+            <button className="auth-submit" type="submit" disabled={loading}>
+              {loading ? 'PLEASE WAIT…' : 'RESET PASSWORD'}
+            </button>
 
-            <form className="auth-form" onSubmit={handleResetPassword} style={{ marginTop: '1rem' }}>
-              <label className="auth-field">
-                <span>Reset token</span>
-                <input
-                  type="text"
-                  placeholder="Token returned after verification"
-                  value={token}
-                  onChange={(event) => setToken(event.target.value)}
-                  required
-                />
-              </label>
+            <button
+              className="auth-secondary-button"
+              type="button"
+              onClick={() => {
+                setStep('request');
+                setOtp('');
+                setToken('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setError('');
+                setSuccess('');
+              }}
+              disabled={loading}
+            >
+              USE DIFFERENT EMAIL
+            </button>
 
-              <label className="auth-field">
-                <span>New password</span>
-                <input
-                  type="password"
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  minLength={8}
-                  required
-                />
-              </label>
-
-              <label className="auth-field">
-                <span>Confirm new password</span>
-                <input
-                  type="password"
-                  placeholder="Confirm new password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  minLength={8}
-                  required
-                />
-              </label>
-
-              {error ? <p className="auth-message auth-message-error">{error}</p> : null}
-              {success ? <p className="auth-message auth-message-success">{success}</p> : null}
-
-              <button className="auth-submit" type="submit" disabled={loading}>
-                {loading ? 'PLEASE WAIT…' : 'RESET PASSWORD'}
-              </button>
-
-              <button
-                className="auth-submit"
-                type="button"
-                onClick={() => {
-                  setStep('request');
-                  setOtp('');
-                  setToken('');
-                  setNewPassword('');
-                  setConfirmPassword('');
-                  setError('');
-                  setSuccess('');
-                }}
-                disabled={loading}
-              >
-                USE DIFFERENT EMAIL
-              </button>
-
-              <p className="auth-message">
-                Need to verify your email first? <Link href="/verify-email">Verify email</Link>
-              </p>
-            </form>
-          </>
+            <p className="auth-message">
+              Need to verify your email first? <Link href="/verify-email">Verify email</Link>
+            </p>
+          </form>
         )}
 
         <div className="auth-links">
