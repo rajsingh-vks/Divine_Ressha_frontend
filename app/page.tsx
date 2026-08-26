@@ -41,12 +41,12 @@ export default async function HomePage() {
 
       <main>
         <Hero />
-        <WhereToUse />
 
         <section className='page-shell-wrapper'>
           <Overview />
           <ProductGrid products={products} variant="home" />
         </section>
+        <WhereToUse />
 
         <section className="page-shell">
           <Features />
