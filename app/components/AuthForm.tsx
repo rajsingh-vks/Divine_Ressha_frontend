@@ -29,7 +29,6 @@ type AuthResponse = {
   email?: string;
   name?: string;
   phone?: string;
-  mobile_verification_code?: string | null;
   email_verification_code?: string | null;
   verification_id?: string;
   signup_verification_id?: string;
@@ -98,7 +97,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [signupVerificationId, setSignupVerificationId] = useState('');
-  const [serverMobileCode, setServerMobileCode] = useState('');
   const [resendingVerification, setResendingVerification] = useState(false);
   const [signupStep, setSignupStep] = useState<'details' | 'verify'>('details');
   const [loginMethod, setLoginMethod] = useState<'password' | 'mobile'>('password');
@@ -204,7 +202,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
               phone: normalizedPhone,
               password: form.password,
               email_code: form.emailCode.trim(),
-              mobile_code: (serverMobileCode || form.emailCode).trim(),
               ...(signupVerificationId ? { verification_id: signupVerificationId } : {}),
             }
         : loginMethod === 'password'
@@ -239,7 +236,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
       if (isSignup && signupStep === 'details') {
         setSignupStep('verify');
         setVerificationEmail(form.email.trim());
-        setServerMobileCode((data.mobile_verification_code || '').trim());
         setSignupVerificationId(
           String(
             data.verification_id ||
@@ -308,7 +304,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
         setSignupStep('details');
         setVerificationEmail('');
         setSignupVerificationId('');
-        setServerMobileCode('');
       }
       if (!isSignup) {
         setLoginMethod('password');
@@ -347,7 +342,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             ? {
                 full_name: form.name.trim() || undefined,
                 email: email.trim(),
-                phone: form.phone.trim(),
+                phone: normalizePhoneForBackend(form.phone, form.countryCode),
                 password: form.password,
               }
             : { email: email.trim() }
@@ -357,11 +352,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
       const data = (await response.json()) as { detail?: string; message?: string };
       if (!response.ok) {
         throw new Error(data.detail || data.message || `Unable to resend verification${isSignup ? ' codes' : ' email'}.`);
-      }
-
-      if (isSignup) {
-        const payload = data as { email_verification_code?: string | null; mobile_verification_code?: string | null };
-        setServerMobileCode((payload.mobile_verification_code || '').trim());
       }
 
       setSuccess(data.message || `Verification ${isSignup ? 'code sent' : 'email sent'}. Please check your inbox.`);
@@ -617,7 +607,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
                 onClick={() => {
                   setSignupStep('details');
                   setSignupVerificationId('');
-                  setServerMobileCode('');
                   setError('');
                   setSuccess('');
                 }}

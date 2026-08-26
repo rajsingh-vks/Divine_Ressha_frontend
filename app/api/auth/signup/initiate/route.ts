@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import { AUTH_ENDPOINTS, BACKEND_API_URL } from '@/lib/constants/auth';
 
+const sanitizeSignupPayload = (payload: Record<string, unknown>) => {
+  const sanitized = { ...payload };
+  delete sanitized.mobile_code;
+  delete sanitized.mobile_verification_code;
+  return sanitized;
+};
+
 async function proxy(request: Request) {
   const payload = await request.json();
+  const sanitizedPayload = sanitizeSignupPayload(payload as Record<string, unknown>);
 
   const candidateBaseUrls = Array.from(
     new Set([BACKEND_API_URL, process.env.BACKEND_API_URL_FALLBACK, 'https://api.divineressha.com'].filter(Boolean))
@@ -19,7 +27,7 @@ async function proxy(request: Request) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(sanitizedPayload),
         cache: 'no-store',
       });
 
