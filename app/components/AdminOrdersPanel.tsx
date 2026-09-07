@@ -494,7 +494,17 @@ export default function AdminOrdersPanel() {
                       <td>
                         <div className="admin-order-address">
                           <strong>{order.shipping_address.city}</strong>
-                          <small>{order.shipping_address.line1}, {order.shipping_address.state}</small>
+                          <small>
+                            {[
+                              order.shipping_address.line1,
+                              order.shipping_address.line2,
+                              `${order.shipping_address.city}, ${order.shipping_address.state}`,
+                              order.shipping_address.postal_code,
+                              order.shipping_address.country,
+                            ]
+                              .filter(Boolean)
+                              .join(', ')}
+                          </small>
                         </div>
                       </td>
                       <td>{prettyValue(order.payment_status || 'unknown')}</td>

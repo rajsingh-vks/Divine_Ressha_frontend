@@ -553,7 +553,7 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
                         />
                       </div>
 
-                      <div className="profile-field-grid profile-field-grid-single">
+                      {/* <div className="profile-field-grid profile-field-grid-single">
                         <label className="profile-field">
                           <span>Avatar URL</span>
                           <input type="url" value={form.avatar_url} onChange={handleChange('avatar_url')} disabled={!editing} placeholder="https://..." />
@@ -577,7 +577,7 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
                           className="profile-textarea"
                           placeholder="Write something about you or your store"
                         />
-                      </div>
+                      </div> */}
 
                       <div className="profile-info-meta">
                         <div>
@@ -594,10 +594,10 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
                             {profile?.email_verified ? 'Yes' : 'No'}
                           </strong>
                         </div>
-                        <div>
+                        {/* <div>
                           <span>User ID</span>
                           <strong>{profile?.id || 'Not available'}</strong>
-                        </div>
+                        </div> */}
                       </div>
 
                       {editing ? (
@@ -629,7 +629,7 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
                     </form>
                   </section>
 
-                  <div className="profile-quick-grid">
+                  {/* <div className="profile-quick-grid">
                     <article className="profile-panel-card compact">
                       <h2>About</h2>
                       <p className="profile-copy-text">{profile?.bio || 'No bio added yet.'}</p>
@@ -648,7 +648,7 @@ export default function ProfilePanel({ activeTab = 'profile' }: ProfilePanelProp
                         </div>
                       </dl>
                     </article>
-                  </div>
+                  </div> */}
                 </>
               ) : null}
 
