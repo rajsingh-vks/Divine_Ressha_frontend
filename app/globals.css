@@ -2136,7 +2136,7 @@ img {
   position: static;
   pointer-events: auto;
   width: 2.5rem;
-  height: 2.5rem;
+  /* height: 2.5rem; */
   border-radius: 999px;
   border: 0;
   background: rgba(255, 255, 255, 0.9);
