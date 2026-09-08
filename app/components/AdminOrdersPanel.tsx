@@ -8,6 +8,7 @@ import {
   ADMIN_AUTH_USER_KEY,
 } from '@/lib/constants/auth';
 import AdminSidebar from '@/app/components/AdminSidebar';
+import { getDiscountAmount, getDiscountedPrice } from '@/lib/utils/pricing';
 
 type AdminUser = { id?: string; email?: string; name?: string; role?: string };
 
@@ -490,7 +491,16 @@ export default function AdminOrdersPanel() {
                           <small>{order.items.map((item) => `${item.name} × ${item.quantity}`).join(', ')}</small>
                         </div>
                       </td>
-                      <td>{formatCurrency(order.subtotal)}</td>
+                      <td>
+                        <div className="admin-order-cell">
+                          <strong>{formatCurrency(getDiscountedPrice(order.subtotal))}</strong>
+                          <small>
+                            {order.subtotal > getDiscountedPrice(order.subtotal)
+                              ? `Discount: ${formatCurrency(getDiscountAmount(order.subtotal))}`
+                              : 'No discount'}
+                          </small>
+                        </div>
+                      </td>
                       <td>
                         <div className="admin-order-address">
                           <strong>{order.shipping_address.city}</strong>
